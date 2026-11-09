@@ -228,3 +228,21 @@ dépendent.
   seul pour un enchantement). Enregistrement après 5 s sans fabrication, et au plus toutes les 30 s pendant une longue série.
 - **Affichage** : « 3/5 craftés » dans l'onglet Commandes et sur les cartes du panneau de métier.
 - **Option** : `profile.livraison.suivi` (activée).
+
+## 14. Phase 3 : livraison par échange (implémentée, à valider en jeu)
+
+Relevé en jeu (6 échanges, 2 annulés) : le contenu n'est lisible qu'avant la fermeture ; `TRADE_CLOSED` arrive deux fois ;
+la réussite est le message système 251 (`UI_INFO_MESSAGE`), l'annulation le 250 ; la fenêtre n'affiche que le prénom du
+partenaire.
+
+- **Module `Echanges`** : instantané (partenaire, objets donnés, objets reçus) à chaque `TRADE_ACCEPT_UPDATE`, abandonné à
+  l'ouverture ou à l'annulation, exploité au message 251.
+- **`Core/Livraison.lua`** (Lua pur, testé) : rapproche l'échange de mes commandes, **côté crafteur seulement**. Matériaux
+  reçus du client (tous pour « tout », au moins un pour « partie », rien pour « crafteur ») → proposition « matériaux reçus » ;
+  objet fabriqué remis au client en quantité suffisante → proposition « terminée ». Les mêmes objets ne servent pas deux
+  commandes ; la plus ancienne passe d'abord ; un enchantement (pas d'objet créé) ne se termine pas par échange.
+- **Confirmation** : une fenêtre demande avant d'avancer la commande (`profile.livraison.confirmer`, activé). Rien n'est
+  jamais accepté ni envoyé automatiquement.
+- **Limites connues** : les livraisons en plusieurs échanges ne s'additionnent pas ; le partenaire est reconnu par son
+  prénom. Le courrier (phase 4) reste à faire : `MAIL_SEND_SUCCESS` après `MAIL_SEND_INFO_UPDATE` pour l'envoi, état des
+  pièces jointes avant/après `MAIL_INBOX_UPDATE` pour la réception.
