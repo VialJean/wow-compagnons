@@ -98,7 +98,8 @@ function Scanner:Analyser()
 		perso = { metiers = {} }
 		persos[cle] = perso
 	end
-	perso.nom = UnitName("player")
+	perso.nom = ns.nomComplet()
+	perso.prenom = UnitName("player")
 	perso.royaume = GetNormalizedRealmName and GetNormalizedRealmName() or GetRealmName()
 	perso.classe = select(2, UnitClass("player"))
 	perso.maj = time()

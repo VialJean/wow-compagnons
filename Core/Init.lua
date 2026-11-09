@@ -27,11 +27,22 @@ local defauts = {
 	},
 }
 
---- Clé unique d'un personnage : "Nom-Royaume".
+--- Nom complet du personnage. Dans Forever un personnage a un prénom et un nom de famille
+-- (« Jean Vialjean ») ; le jeu renvoie le nom de famille à la place du royaume.
+function ns.nomComplet()
+	return (GetUnitName and GetUnitName("player", true)) or UnitName("player")
+end
+
+--- Clé unique d'un personnage : son nom complet, comme dans la liste de guilde.
+-- Le royaume est le même pour tous les joueurs de Forever, il n'entre donc pas dans la clé.
 function ns.clePersonnage()
-	local nom = UnitName("player")
+	return ns.nomComplet()
+end
+
+--- Ancienne clé « Prénom-Royaume » (avant la prise en compte du nom de famille).
+local function ancienneCle()
 	local royaume = GetNormalizedRealmName and GetNormalizedRealmName() or GetRealmName()
-	return nom .. "-" .. (royaume or "?")
+	return UnitName("player") .. "-" .. (royaume or "?")
 end
 
 --- Vrai si le personnage est connecté. Pour l'instant seul le personnage courant l'est ;
@@ -44,6 +55,15 @@ function Compagnons:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("CompagnonsDB", defauts, true)
 	ns.db = self.db
 	self.db.global.schema = ns.SCHEMA_DB
+
+	-- Migration : les personnages scannés avant le nom de famille étaient rangés sous « Prénom-Royaume ».
+	local persos = self.db.global.personnages
+	local cle, ancienne = ns.clePersonnage(), ancienneCle()
+	if persos[ancienne] and not persos[cle] and ancienne ~= cle then
+		persos[cle] = persos[ancienne]
+		persos[ancienne] = nil
+	end
+
 	self:RegisterChatCommand("compagnons", "Commande")
 	self:RegisterChatCommand("cpg", "Commande")
 end

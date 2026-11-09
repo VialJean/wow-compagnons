@@ -12,8 +12,9 @@ CompagnonsDB = {
   global = {
     schema = 1,
     personnages = {
-      ["Brumefer-Royaume"] = {
-        nom = "Brumefer", royaume = "Royaume", classe = "WARRIOR", maj = 1731180062,
+      ["Brumefer Hautrocher"] = {   -- clé : nom complet, voir « Noms des personnages »
+        nom = "Brumefer Hautrocher", prenom = "Brumefer", royaume = "Royaume",
+        classe = "WARRIOR", maj = 1731180062,
         metiers = {
           [171] = {                 -- skillLineID, ou nom si l'ID est indisponible
             id = 171, nom = "Alchimie", niveau = 285, max = 300,
@@ -32,6 +33,18 @@ CompagnonsDB = {
 ```
 
 `CompagnonsPersoDB` (par personnage) : uniquement `sessions` pour l'instant (diagnostic).
+
+## Noms des personnages
+
+Dans Forever, un personnage a un **prénom et un nom de famille**. Le jeu renvoie le nom de famille là où WoW
+met le royaume : `UnitName("player")` donne `"Jean", "Vialjean"`, et `GetUnitName("player", true)` donne
+`"Jean Vialjean"`. Le royaume réel (`GetNormalizedRealmName()`) est le même pour tous.
+
+- La **clé** d'un personnage est son nom complet, `"Prénom Nom"`, tel qu'il apparaît dans la liste de guilde.
+- `nom` : nom complet ; `prenom` : prénom seul ; `royaume` : informatif.
+- Un expéditeur de message addon peut arriver sous la forme `Prénom-Nom` (comme le dossier des SavedVariables) :
+  le normaliser en remplaçant le tiret par une espace avant de chercher la clé.
+- Les données enregistrées sous l'ancienne clé `Prénom-Royaume` sont migrées au chargement pour le personnage courant.
 
 ## Messages addon
 
