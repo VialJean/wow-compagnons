@@ -14,6 +14,7 @@ globals = {
 	"Compagnons",
 	"CompagnonsDB",
 	"CompagnonsPersoDB",
+	"StaticPopupDialogs",
 }
 
 -- API WoW utilisées (à compléter au fil des modules)
@@ -36,7 +37,7 @@ read_globals = {
 	"ProfessionsFrame", "TradeSkillFrame",
 	"GetLocale", "GetTime", "SetItemRef", "ChatFrame_OpenChat", "GetCoinTextureString",
 	"GetNumAuctionItems", "GetAuctionItemInfo", "GetAuctionItemLink",
-	"GetTradePlayerItemInfo", "GetTradeTargetItemInfo", "GetPlayerTradeMoney", "GetTargetTradeMoney",
+	"GetTradePlayerItemLink", "GetTradeTargetItemLink", "StaticPopup_Show", "GetTradePlayerItemInfo", "GetTradeTargetItemInfo", "GetPlayerTradeMoney", "GetTargetTradeMoney",
 	"GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxItem", "GetSendMailItem", "GetSendMailMoney", "ITEM_QUALITY_COLORS", "Enum", "TooltipDataProcessor", "ItemRefTooltip", "ShoppingTooltip1", "IsShiftKeyDown", "IsControlKeyDown",
 	"HandleModifiedItemClick", "ContainerFrameItemButton_OnModifiedClick", "hooksecurefunc",
 	"ButtonFrameTemplate_HidePortrait", "InCombatLockdown",
