@@ -12,6 +12,12 @@ local MAX_CRAFTEURS = 5
 local MAX_CARTES = 3
 local DELAI_OUVERTURE = 0.4
 local PERIODE_SUIVI = 0.4
+local LARGEUR = 300
+local MARGE = 12
+local HAUTEUR_CARTE = 62
+-- La fenêtre de métier du jeu a une colonne d'onglets (les autres métiers) qui dépasse de son bord droit :
+-- on décale le panneau pour ne pas la recouvrir.
+local DECALAGE_ONGLETS = 70
 
 local function securise(etape, fn, ...)
 	local ok, resultat = pcall(fn, ...)
@@ -68,63 +74,61 @@ function Panneau:SurFermeture()
 end
 
 function Panneau:Creer()
-	local f = CreateFrame("Frame", "CompagnonsPanneauMetier", UIParent, "BackdropTemplate")
-	f:SetSize(260, 430)
+	-- Même gabarit natif que l'atelier : cadre à titre, avec un encart pour le contenu.
+	local f = CreateFrame("Frame", "CompagnonsPanneauMetier", UIParent, "ButtonFrameTemplate")
+	f:SetWidth(LARGEUR)
+	f:SetHeight(300) -- recalculé selon le contenu (Disposer)
 	f:SetFrameStrata("HIGH")
-	f:SetBackdrop({
-		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		edgeSize = 16,
-		insets = { left = 4, right = 4, top = 4, bottom = 4 },
-	})
-	f:SetBackdropColor(0.08, 0.07, 0.05, 0.95)
-	f:SetBackdropBorderColor(0.54, 0.45, 0.25, 1)
+	f:SetClampedToScreen(true)
+	f:SetMovable(true)
+	f:EnableMouse(true)
+	f:RegisterForDrag("LeftButton")
+	f:SetScript("OnDragStart", f.StartMoving)
+	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	f:Hide()
 
-	f.titre = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	f.titre:SetPoint("TOPLEFT", 14, -14)
-	f.titre:SetPoint("RIGHT", f, "RIGHT", -14, 0)
-	f.titre:SetJustifyH("LEFT")
+	securise("gabarit", function()
+		if ButtonFrameTemplate_HidePortrait then ButtonFrameTemplate_HidePortrait(f) end
+		if ButtonFrameTemplate_HideButtonBar then ButtonFrameTemplate_HideButtonBar(f) end
+	end)
+	-- Le fond par défaut de l'encart est remplacé par le nôtre, plus simple à disposer.
+	if f.Inset then f.Inset:Hide() end
 
-	f.recette = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	f.recette:SetPoint("TOPLEFT", f.titre, "BOTTOMLEFT", 0, -12)
-	f.recette:SetPoint("RIGHT", f, "RIGHT", -14, 0)
+	local c = CreateFrame("Frame", nil, f, "InsetFrameTemplate")
+	c:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -34)
+	c:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 10)
+	f.contenu = c
+	local largeurTexte = LARGEUR - 20 - 2 * MARGE
+
+	f.recette = c:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	f.recette:SetWidth(largeurTexte)
 	f.recette:SetJustifyH("LEFT")
 
-	f.sousTitre = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	f.sousTitre:SetPoint("TOPLEFT", f.recette, "BOTTOMLEFT", 0, -10)
+	f.sousTitre = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	f.sousTitre:SetText(L.PEUVENT_CRAFTER)
 
 	f.lignes = {}
 	for i = 1, MAX_CRAFTEURS do
-		local ligne = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-		ligne:SetPoint("TOPLEFT", f.sousTitre, "BOTTOMLEFT", 0, -4 - (i - 1) * 16)
+		local ligne = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		ligne:SetWidth(largeurTexte)
 		ligne:SetJustifyH("LEFT")
 		f.lignes[i] = ligne
 	end
-	f.aucun = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	f.aucun:SetPoint("TOPLEFT", f.sousTitre, "BOTTOMLEFT", 0, -4)
+	f.aucun = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.aucun:SetText(L.PERSONNE_CONNAIT)
 
-	f.bilan = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.bilan:SetPoint("BOTTOMLEFT", 14, 40)
-	f.bilan:SetPoint("RIGHT", f, "RIGHT", -14, 0)
-	f.bilan:SetJustifyH("LEFT")
-
 	-- Commandes du métier : celles que l'on peut remplir, et celles que l'on a prises.
-	f.titreCommandes = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	f.titreCommandes:SetPoint("TOPLEFT", f.sousTitre, "BOTTOMLEFT", 0, -10 - MAX_CRAFTEURS * 16)
+	f.titreCommandes = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	f.titreCommandes:SetText(L.PANNEAU_COMMANDES)
-	f.aucuneCommande = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	f.aucuneCommande:SetPoint("TOPLEFT", f.titreCommandes, "BOTTOMLEFT", 0, -4)
+	f.aucuneCommande = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	f.aucuneCommande:SetWidth(largeurTexte)
+	f.aucuneCommande:SetJustifyH("LEFT")
 	f.aucuneCommande:SetText(L.PANNEAU_AUCUNE_COMMANDE)
 
 	f.cartes = {}
 	for i = 1, MAX_CARTES do
-		local carte = CreateFrame("Frame", nil, f, "BackdropTemplate")
-		carte:SetHeight(62)
-		carte:SetPoint("TOPLEFT", f.titreCommandes, "BOTTOMLEFT", 0, -4 - (i - 1) * 66)
-		carte:SetPoint("RIGHT", f, "RIGHT", -14, 0)
+		local carte = CreateFrame("Frame", nil, c, "BackdropTemplate")
+		carte:SetHeight(HAUTEUR_CARTE)
 		carte:SetBackdrop({
 			bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -153,9 +157,12 @@ function Panneau:Creer()
 		f.cartes[i] = carte
 	end
 
-	f.ouvrir = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	f.ouvrir:SetSize(232, 24)
-	f.ouvrir:SetPoint("BOTTOM", 0, 10)
+	f.bilan = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	f.bilan:SetWidth(largeurTexte)
+	f.bilan:SetJustifyH("LEFT")
+
+	f.ouvrir = CreateFrame("Button", nil, c, "UIPanelButtonTemplate")
+	f.ouvrir:SetSize(largeurTexte, 24)
 	f.ouvrir:SetText(L.OUVRIR_ATELIER)
 	f.ouvrir:SetScript("OnClick", function()
 		local fenetre = ns.Fenetre
@@ -173,6 +180,50 @@ function Panneau:Creer()
 	self.cadre = f
 end
 
+--- Dispose le contenu de haut en bas et ajuste la hauteur du cadre : pas de vide, pas de chevauchement.
+function Panneau:Disposer()
+	local f = self.cadre
+	local c = f.contenu
+	local y = MARGE
+
+	local function placer(element, decalage)
+		element:ClearAllPoints()
+		element:SetPoint("TOPLEFT", c, "TOPLEFT", MARGE, -y)
+		y = y + (decalage or 0)
+	end
+
+	placer(f.recette, f.recette:GetStringHeight() + 12)
+
+	if f.sousTitre:IsShown() then
+		placer(f.sousTitre, 14)
+		for i = 1, MAX_CRAFTEURS do
+			if f.lignes[i]:IsShown() then placer(f.lignes[i], 17) end
+		end
+		if f.aucun:IsShown() then placer(f.aucun, 16) end
+		y = y + 8
+	end
+
+	placer(f.titreCommandes, 16)
+	local nbCartes = 0
+	for i = 1, MAX_CARTES do
+		local carte = f.cartes[i]
+		if carte:IsShown() then
+			nbCartes = nbCartes + 1
+			carte:ClearAllPoints()
+			carte:SetPoint("TOPLEFT", c, "TOPLEFT", MARGE, -y)
+			carte:SetPoint("TOPRIGHT", c, "TOPRIGHT", -MARGE, -y)
+			y = y + HAUTEUR_CARTE + 4
+		end
+	end
+	if nbCartes == 0 then placer(f.aucuneCommande, f.aucuneCommande:GetStringHeight() + 4) end
+	y = y + 10
+
+	if f.bilan:GetText() and f.bilan:GetText() ~= "" then placer(f.bilan, f.bilan:GetStringHeight() + 10) end
+	placer(f.ouvrir, 24 + MARGE)
+
+	f:SetHeight(y + 34 + 10) -- barre de titre en haut, marge en bas
+end
+
 function Panneau:Attacher()
 	local parent = fenetreDeMetier()
 	if not parent then
@@ -182,7 +233,7 @@ function Panneau:Attacher()
 	if not self.cadre then self:Creer() end
 	local f = self.cadre
 	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", parent, "TOPRIGHT", 2, -12)
+	f:SetPoint("TOPLEFT", parent, "TOPRIGHT", DECALAGE_ONGLETS, 0)
 	if not self.parentSurveille then
 		self.parentSurveille = true
 		parent:HookScript("OnHide", function() f:Hide() end)
@@ -252,7 +303,8 @@ function Panneau:Actualiser()
 	local idMetier, nomMetier = metierAffiche()
 	self.metier = idMetier
 	local metier = idMetier and ns.Recettes.metiers[idMetier]
-	f.titre:SetText(string.format(L.PANNEAU_TITRE, (metier and metier.nom) or nomMetier or "?"))
+	local titre = string.format(L.PANNEAU_TITRE, (metier and metier.nom) or nomMetier or "?")
+	if f.SetTitle then f:SetTitle(titre) elseif f.TitleText then f.TitleText:SetText(titre) end
 
 	local spellID = securise("recette sélectionnée", recetteSelectionnee)
 	self.derniere = spellID
@@ -300,4 +352,6 @@ function Panneau:Actualiser()
 	else
 		f.bilan:SetText("")
 	end
+
+	self:Disposer()
 end
