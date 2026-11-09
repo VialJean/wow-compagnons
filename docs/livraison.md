@@ -261,3 +261,17 @@ déjà vide (message 472 « Message envoyé. ») ; retirer une pièce jointe vid
 - **Rapprochement** : identique à l'échange (mêmes règles et même confirmation, module `Echanges`) ; l'expéditeur peut porter
   un royaume, qui est ignoré.
 - **Pas de retrait automatique** des pièces jointes : c'est une action protégée, le joueur clique.
+
+## 16. Phase 5 : assistance à l'envoi (implémentée, à valider en jeu)
+
+- **Cadre** (`UI/Assistance.lua`) : s'affiche à droite de la fenêtre d'échange ou de courrier quand j'ai quelque chose à
+  remettre à la personne : composants à mon crafteur (je suis le client d'une commande prise, `mats` différent de « crafteur »)
+  ou objet fabriqué à mon client (commande prise ou matériaux reçus, hors enchantement). Option `livraison.aide`.
+- **Un clic, un emplacement** : le bouton « Placer 20 × Étoffe de lin » prend le plus gros tas dans les sacs (fractionné au
+  besoin) et le pose dans le premier emplacement libre. Ce qui est déjà posé est déduit ; ce qui manque dans les sacs est signalé.
+  Pour le courrier, le premier clic remplit aussi le destinataire (le plus ancien de mes partenaires s'il est vide) et l'objet.
+- **Toujours au joueur** : accepter l'échange et envoyer le courrier ne sont jamais faits par l'addon. Rien en combat.
+- **Noyau testé** (`Core/Assistance.lua`) : qui, quoi, quelle quantité, quels emplacements des sacs. La pose elle-même dépend
+  des API de Forever (`C_Container`, `ClickTradeButton`, `ClickSendMailItemButton`) et reste à valider en jeu ; une erreur est
+  journalisée (`/cpg journal`) et le curseur vidé.
+- **Limite** : seuls les sacs du personnage connecté sont utilisés (pas ses autres personnages ni la banque).

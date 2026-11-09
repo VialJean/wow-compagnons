@@ -24,6 +24,7 @@ Core\Alias.lua
 Core\Observation.lua
 Core\Progres.lua
 Core\Livraison.lua
+Core\Assistance.lua
 Core\Stock.lua
 Core\Prix.lua
 Core\Noms.lua
@@ -58,4 +59,5 @@ UI\Courses.lua
 UI\PanneauMetier.lua
 UI\Infobulles.lua
 UI\Alertes.lua
+UI\Assistance.lua
 UI\Minicarte.lua
