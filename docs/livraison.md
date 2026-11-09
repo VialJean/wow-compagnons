@@ -278,7 +278,7 @@ déjà vide (message 472 « Message envoyé. ») ; retirer une pièce jointe vid
 
 ### Prix des vendeurs PNJ
 
-Certains composants ne s'achètent qu'chez un marchand : l'hôtel des ventes ne donne alors pas le coût réel. Le client
+Certains composants ne s'achètent que chez un marchand : l'hôtel des ventes ne donne alors pas le coût réel. Le client
 n'indique pas qui vend quoi, l'addon le relève donc en jeu : à l'ouverture d'un marchand (`MERCHANT_SHOW`, `MERCHANT_UPDATE`),
 chaque composant de la base vendu **sans limite de stock et contre de l'or seulement** est enregistré au prix unitaire,
 marqué « vendeur » (`v = true`).
