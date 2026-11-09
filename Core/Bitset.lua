@@ -10,7 +10,7 @@ local _, ns = ...
 
 local floor, ceil = math.floor, math.ceil
 local char, byte = string.char, string.byte
-local unpack = unpack or table.unpack
+local unpack = unpack or rawget(table, "unpack") -- Lua 5.1 (WoW) : `unpack` ; Lua 5.2+ (tests) : `table.unpack`
 
 local Bitset = {}
 ns.Bitset = Bitset
