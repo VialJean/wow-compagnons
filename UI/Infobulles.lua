@@ -42,6 +42,11 @@ function Module:Contexte()
 		maj = IsShiftKeyDown(),
 		options = ns.db.profile.infobulles,
 		couleurClasse = couleurClasse,
+		couleurQualite = function(qualite)
+			local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[qualite or 1]
+			if c then return c.r, c.g, c.b end
+			return 1, 1, 1
+		end,
 	}
 end
 

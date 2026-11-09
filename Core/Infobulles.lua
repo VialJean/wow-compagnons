@@ -13,6 +13,7 @@
 --   maj,                       vrai si Maj est enfoncé
 --   options,                   { objet, composant, personne, commander }
 --   couleurClasse(classe),     r, g, b
+--   couleurQualite(qualite),   r, g, b
 -- }
 local _, ns = ...
 
@@ -21,6 +22,7 @@ ns.Infobulles = Infobulles
 
 local MAX_NOMS = 3
 local MAX_RECETTES_DETAIL = 8
+local MAX_UTILES = 3
 
 local OR = { 0.88, 0.7, 0.32 }
 local BLANC = { 1, 1, 1 }
@@ -198,6 +200,62 @@ local function crafteursDuComposant(ctx, recettes)
 	return liste
 end
 
+--- Recettes qui utilisent le composant, classées par intérêt : celles que je connais et qui font encore
+-- progresser, celles que je connais, celles qu'un membre connaît, les autres ; puis par niveau et par nom.
+local function recettesUtiles(ctx, recettes)
+	local liste = {}
+	for _, spellID in ipairs(recettes) do
+		local r = ctx.catalogue.donnees.recettes[spellID]
+		local gris = (r.seuils or {})[4]
+		local mienne, monte = false, false
+		local autres = {}
+		for _, c in ipairs(ctx.catalogue:Crafteurs(spellID)) do
+			if ctx.miens[c.cle] then
+				mienne = true
+				if gris and (c.niveau or 0) < gris then monte = true end
+			else
+				autres[#autres + 1] = c.nom
+			end
+		end
+		local rang
+		if mienne and monte then rang = 1
+		elseif mienne then rang = 2
+		elseif #autres > 0 then rang = 3
+		else rang = 4 end
+		liste[#liste + 1] = { spell = spellID, recette = r, rang = rang, mienne = mienne, monte = monte, autres = autres }
+	end
+	table.sort(liste, function(a, b)
+		if a.rang ~= b.rang then return a.rang < b.rang end
+		if a.recette.niveau ~= b.recette.niveau then return a.recette.niveau < b.recette.niveau end
+		return a.recette.nom < b.recette.nom
+	end)
+	return liste
+end
+
+--- Ce qu'on sait de la recette à droite de son nom : moi, ou les autres crafteurs, ou personne.
+local function precision(e)
+	if e.mienne then return e.monte and ns.L.INFO_TOI_MONTE or ns.L.INFO_TOI end
+	if #e.autres == 0 then return ns.L.INFO_PERSONNE_COURT end
+	local texte = table.concat(e.autres, ", ", 1, math.min(#e.autres, 2))
+	if #e.autres > 2 then texte = texte .. " " .. string.format(ns.L.INFO_ET_AUTRES, #e.autres - 2) end
+	return texte
+end
+
+--- Lignes « Utile pour » : les trois recettes les plus intéressantes, puis le nombre des autres.
+local function lignesUtilePour(ctx, recettes)
+	local utiles = recettesUtiles(ctx, recettes)
+	local lignes = { ligne(string.format(ns.L.INFO_UTILE_POUR, #utiles), GRIS) }
+	for i = 1, math.min(#utiles, MAX_UTILES) do
+		local e = utiles[i]
+		local qr, qg, qb = ctx.couleurQualite(e.recette.qualite)
+		lignes[#lignes + 1] = ligne(string.format("  %s%s|r · %s", hex(qr, qg, qb), e.recette.nom, precision(e)), BLANC)
+	end
+	if #utiles > MAX_UTILES then
+		lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_RECETTES, #utiles - MAX_UTILES), GRIS)
+	end
+	return lignes
+end
+
 --- Lignes à ajouter à l'infobulle d'un objet utilisé comme composant, ou nil.
 function Infobulles.composant(ctx, itemID)
 	if not ctx or not ctx.options or not ctx.options.composant or not ctx.catalogue then return nil end
@@ -222,6 +280,7 @@ function Infobulles.composant(ctx, itemID)
 			lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_RECETTES, #noms - MAX_RECETTES_DETAIL), GRIS)
 		end
 	else
+		for _, l in ipairs(lignesUtilePour(ctx, recettes)) do lignes[#lignes + 1] = l end
 		for i = 1, math.min(#crafteurs, MAX_NOMS) do
 			local c = crafteurs[i]
 			local r, g, b = ctx.couleurClasse(c.classe)
