@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Compagnons : enclume et deux marteaux croisés">
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2d241a"/>
+      <stop offset="1" stop-color="#15110d"/>
+    </linearGradient>
+    <linearGradient id="or" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6d98a"/>
+      <stop offset="0.55" stop-color="#e0b252"/>
+      <stop offset="1" stop-color="#a87a28"/>
+    </linearGradient>
+    <linearGradient id="acier" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dfe3e8"/>
+      <stop offset="1" stop-color="#7d838c"/>
+    </linearGradient>
+    <linearGradient id="bois" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a6238"/>
+      <stop offset="1" stop-color="#5a3d22"/>
+    </linearGradient>
+    <radialGradient id="lueur" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#e0b252" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#e0b252" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="8" y="8" width="496" height="496" rx="96" fill="url(#fond)" stroke="#8a7240" stroke-width="8"/>
+  <rect x="24" y="24" width="464" height="464" rx="82" fill="none" stroke="#e0b252" stroke-opacity="0.35" stroke-width="2"/>
+  <circle cx="256" cy="300" r="210" fill="url(#lueur)"/>
+
+  <!-- deux marteaux croisés -->
+  <g id="marteau-gauche" transform="rotate(-38 256 205)">
+    <rect x="246" y="92" width="20" height="210" rx="8" fill="url(#bois)"/>
+    <rect x="212" y="78" width="88" height="52" rx="9" fill="url(#acier)" stroke="#4a4f57" stroke-width="3"/>
+    <rect x="212" y="78" width="88" height="14" rx="7" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+  <g id="marteau-droit" transform="rotate(38 256 205)">
+    <rect x="246" y="92" width="20" height="210" rx="8" fill="url(#bois)"/>
+    <rect x="212" y="78" width="88" height="52" rx="9" fill="url(#acier)" stroke="#4a4f57" stroke-width="3"/>
+    <rect x="212" y="78" width="88" height="14" rx="7" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+
+  <!-- enclume -->
+  <path id="enclume" fill="url(#or)" stroke="#6e4f17" stroke-width="5" stroke-linejoin="round"
+        d="M 70 300 Q 104 272 168 270 L 410 270 Q 428 270 428 286 L 428 306 Q 428 318 412 318
+           L 334 318 Q 326 344 322 362 L 378 362 Q 394 362 394 378 L 394 408 L 118 408 L 118 378
+           Q 118 362 134 362 L 190 362 Q 186 344 178 318 L 150 318 Q 100 316 70 300 Z"/>
+  <path d="M 150 282 L 410 282" stroke="#fff3c9" stroke-opacity="0.7" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- étincelles -->
+  <g fill="#fff3c9">
+    <path d="M 256 232 l 6 -22 l 6 22 l 22 6 l -22 6 l -6 22 l -6 -22 l -22 -6 z" transform="translate(0 6) scale(1)"/>
+    <circle cx="206" cy="218" r="5"/>
+    <circle cx="312" cy="212" r="4"/>
+    <circle cx="290" cy="190" r="3"/>
+  </g>
+</svg>
