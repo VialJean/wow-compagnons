@@ -197,6 +197,13 @@ function Dialogue:Creer()
 		ligne.statut:SetPoint("RIGHT")
 		ligne.statut:SetJustifyH("RIGHT")
 		ligne.nom:SetPoint("RIGHT", ligne.statut, "LEFT", -8, 0)
+		ligne:EnableMouse(true)
+		ligne:SetScript("OnEnter", function(l)
+			securise("infobulle du composant", ns.infobulleObjet, l, l.itemID, l.nomObjet, l.qualiteObjet, "ANCHOR_LEFT")
+		end)
+		ligne:SetScript("OnLeave", function()
+			if GameTooltip then GameTooltip:Hide() end
+		end)
 		ligne:Hide()
 		f.lignes[i] = ligne
 	end
@@ -275,6 +282,7 @@ function Dialogue:ActualiserComposants()
 			local besoin = comp.qte * self.qte
 			local possede = stock(comp.itemID)
 			local nom = comp.nom ~= "" and comp.nom or ("#" .. comp.itemID)
+			ligne.itemID, ligne.nomObjet, ligne.qualiteObjet = comp.itemID, nom, comp.qualite
 			ligne.icone:SetTexture(iconeObjet(comp.itemID) or ICONE_INCONNUE)
 			ligne.nom:SetText(string.format("%d × %s", besoin, nom))
 			ligne.nom:SetTextColor(couleurQualite(comp.qualite))

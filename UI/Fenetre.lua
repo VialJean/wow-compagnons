@@ -44,6 +44,55 @@ local function couleurClasse(classe)
 	return 0.8, 0.8, 0.8
 end
 
+--- Infobulle d'un objet. Essaie SetItemByID, puis un lien d'objet, puis, si le client n'a pas encore
+-- l'objet en cache, un simple titre avec le nom de la base de recettes : l'infobulle n'est jamais vide.
+function ns.infobulleObjet(proprietaire, itemID, nom, qualite, ancre)
+	if not GameTooltip or not itemID then return end
+	GameTooltip:SetOwner(proprietaire, ancre or "ANCHOR_RIGHT")
+	local ok = false
+	if GameTooltip.SetItemByID then ok = pcall(GameTooltip.SetItemByID, GameTooltip, itemID) end
+	if not ok or GameTooltip:NumLines() == 0 then
+		ok = pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. itemID)
+	end
+	if not ok or GameTooltip:NumLines() == 0 then
+		GameTooltip:ClearLines()
+		local r, g, b = couleurQualite(qualite)
+		GameTooltip:SetText((nom and nom ~= "") and nom or ("#" .. itemID), r, g, b)
+	end
+	GameTooltip:Show()
+end
+
+--- Infobulle d'une recette : l'objet créé (ou le sort, pour un enchantement) puis les crafteurs de la guilde.
+function ns.infobulleRecette(proprietaire, spellID)
+	local recette = spellID and ns.Recettes.recettes[spellID]
+	if not recette or not GameTooltip then return end
+	if recette.objet and recette.objet > 0 then
+		ns.infobulleObjet(proprietaire, recette.objet, recette.nom, recette.qualite, "ANCHOR_RIGHT")
+	else
+		GameTooltip:SetOwner(proprietaire, "ANCHOR_RIGHT")
+		local ok = GameTooltip.SetSpellByID and pcall(GameTooltip.SetSpellByID, GameTooltip, spellID)
+		if not ok or GameTooltip:NumLines() == 0 then
+			GameTooltip:ClearLines()
+			GameTooltip:SetText(recette.nom, 1, 0.82, 0)
+		end
+	end
+
+	local crafteurs = ns.catalogue and ns.catalogue:Crafteurs(spellID) or {}
+	GameTooltip:AddLine(" ")
+	GameTooltip:AddLine("Compagnons", 0.88, 0.7, 0.32)
+	if #crafteurs == 0 then
+		GameTooltip:AddLine(L.PERSONNE_CONNAIT, 0.9, 0.5, 0.42)
+	else
+		for i = 1, math.min(#crafteurs, 6) do
+			local c = crafteurs[i]
+			local r, g, b = couleurClasse(c.classe)
+			GameTooltip:AddLine(string.format("%s · %s", c.nom, ns.estEnLigne(c.cle) and L.EN_LIGNE or L.HORS_LIGNE), r, g, b)
+		end
+		if #crafteurs > 6 then GameTooltip:AddLine(string.format(L.ET_AUTRES, #crafteurs - 6), 0.7, 0.7, 0.7) end
+	end
+	GameTooltip:Show()
+end
+
 local function iconeObjet(itemID)
 	if C_Item and C_Item.GetItemIconByID then return C_Item.GetItemIconByID(itemID) end
 	if GetItemIcon then return GetItemIcon(itemID) end
@@ -275,6 +324,12 @@ function Fenetre:CreerRecettes(f)
 			ligne.selection:SetAllPoints()
 			ligne.selection:SetColorTexture(0.88, 0.7, 0.32, 0.22)
 			ligne:SetScript("OnClick", function(bouton) Fenetre:Selectionner(bouton.spellID) end)
+			ligne:SetScript("OnEnter", function(bouton)
+				securise("infobulle de la recette", ns.infobulleRecette, bouton, bouton.spellID)
+			end)
+			ligne:SetScript("OnLeave", function()
+				if GameTooltip then GameTooltip:Hide() end
+			end)
 			function ligne:Actualiser()
 				self.selection:SetShown(self.spellID == Fenetre.selection)
 			end
@@ -355,12 +410,10 @@ function Fenetre:CreerDetail(f)
 		ligne.nom:SetJustifyH("LEFT")
 		ligne.stock = ligne:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		ligne.stock:SetPoint("RIGHT")
+		ligne:EnableMouse(true)
 		ligne:SetScript("OnEnter", function(bouton)
-			if bouton.itemID and GameTooltip and GameTooltip.SetItemByID then
-				GameTooltip:SetOwner(bouton, "ANCHOR_LEFT")
-				GameTooltip:SetItemByID(bouton.itemID)
-				GameTooltip:Show()
-			end
+			securise("infobulle du composant", ns.infobulleObjet, bouton, bouton.itemID, bouton.nomObjet,
+				bouton.qualiteObjet, "ANCHOR_LEFT")
 		end)
 		ligne:SetScript("OnLeave", function()
 			if GameTooltip then GameTooltip:Hide() end
@@ -550,6 +603,8 @@ function Fenetre:ActualiserDetail()
 			if nom == "" and C_Item and C_Item.GetItemNameByID then nom = C_Item.GetItemNameByID(comp.itemID) or "" end
 			if nom == "" then nom = "#" .. comp.itemID end
 			ligne.itemID = comp.itemID
+			ligne.nomObjet = nom
+			ligne.qualiteObjet = comp.qualite
 			ligne.icone:SetTexture(iconeObjet(comp.itemID) or ICONE_INCONNUE)
 			ligne.nom:SetText(nom)
 			ligne.nom:SetTextColor(couleurQualite(comp.qualite))
