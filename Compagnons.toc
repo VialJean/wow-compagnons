@@ -47,6 +47,7 @@ Modules\Atelier.lua
 Modules\Observateur.lua
 Modules\Fabrication.lua
 Modules\Echanges.lua
+Modules\Courriers.lua
 Modules\Stocks.lua
 Modules\Marche.lua
 

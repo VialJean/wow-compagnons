@@ -8,10 +8,11 @@ local _, ns = ...
 local Livraison = {}
 ns.Livraison = Livraison
 
---- Premier mot d'un nom, en minuscules. Le jeu n'affiche que le prénom dans la fenêtre d'échange.
+--- Premier mot d'un nom, en minuscules, sans le royaume. La fenêtre d'échange n'affiche que le prénom ; l'expéditeur
+-- d'un courrier peut porter un royaume (« Prénom-Royaume »).
 function Livraison.prenom(nom)
 	if type(nom) ~= "string" then return nil end
-	local p = nom:match("^%S+")
+	local p = nom:match("^[^%s%-]+")
 	return p and p:lower() or nil
 end
 
@@ -78,6 +79,40 @@ function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne)
 		if action then propositions[#propositions + 1] = { id = o.id, action = action } end
 	end
 	return propositions
+end
+
+local function signature(courrier)
+	local ids = {}
+	for id in pairs(courrier.objets) do ids[#ids + 1] = id end
+	table.sort(ids)
+	local morceaux = { courrier.expediteur, courrier.sujet or "" }
+	for _, id in ipairs(ids) do morceaux[#morceaux + 1] = id .. "x" .. courrier.objets[id] end
+	return table.concat(morceaux, "\n")
+end
+
+--- Courriers dont les pièces jointes ont été retirées entre deux relevés de la boîte.
+-- Un courrier est { expediteur, sujet, objets = { [itemID] = quantité } } ; seuls ceux qui ont des pièces jointes comptent.
+-- Compare par contenu (et non par position, qui change quand un courrier disparaît) en tenant compte des doublons.
+function Livraison.courriersRetires(avant, apres)
+	local restant = {}
+	for _, c in ipairs(apres) do
+		if next(c.objets) then
+			local s = signature(c)
+			restant[s] = (restant[s] or 0) + 1
+		end
+	end
+	local retires = {}
+	for _, c in ipairs(avant) do
+		if next(c.objets) then
+			local s = signature(c)
+			if (restant[s] or 0) > 0 then
+				restant[s] = restant[s] - 1
+			else
+				retires[#retires + 1] = c
+			end
+		end
+	end
+	return retires
 end
 
 return Livraison

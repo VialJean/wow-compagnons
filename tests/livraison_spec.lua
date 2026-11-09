@@ -71,3 +71,32 @@ describe("Livraison.rapprocher", function()
 		assert.is_false(Livraison.memePersonne("Spellus Spamus", nil))
 	end)
 end)
+
+describe("Livraison.courriersRetires", function()
+	local function courrier(de, sujet, objets) return { expediteur = de, sujet = sujet, objets = objets } end
+
+	it("repère le courrier dont les pièces jointes ont été retirées", function()
+		local a = courrier("Spellus", "Lin", { [10] = 6 })
+		local retires = Livraison.courriersRetires({ a }, { courrier("Spellus", "Lin", {}) })
+		assert.are.equal(1, #retires)
+		assert.are.equal(6, retires[1].objets[10])
+		assert.are.equal(0, #Livraison.courriersRetires({ a }, { a }))
+	end)
+
+	it("ne confond pas un décalage de position avec un retrait", function()
+		local a, b = courrier("Spellus", "A", { [10] = 1 }), courrier("Brumefer", "B", { [11] = 2 })
+		assert.are.equal(0, #Livraison.courriersRetires({ a, b }, { b, a }))
+		local retires = Livraison.courriersRetires({ a, b }, { b })
+		assert.are.equal("Spellus", retires[1].expediteur)
+	end)
+
+	it("compte les doublons et ignore les courriers sans pièce jointe", function()
+		local a = courrier("Spellus", "Lin", { [10] = 1 })
+		assert.are.equal(1, #Livraison.courriersRetires({ a, a }, { a }))
+		assert.are.equal(0, #Livraison.courriersRetires({ courrier("X", "Y", {}) }, {}))
+	end)
+
+	it("reconnaît un expéditeur avec royaume", function()
+		assert.is_true(Livraison.memePersonne("Spellus Spamus", "Spellus-CAMWOWEU5Realm10RP"))
+	end)
+end)

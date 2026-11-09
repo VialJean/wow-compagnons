@@ -246,3 +246,18 @@ partenaire.
 - **Limites connues** : les livraisons en plusieurs échanges ne s'additionnent pas ; le partenaire est reconnu par son
   prénom. Le courrier (phase 4) reste à faire : `MAIL_SEND_SUCCESS` après `MAIL_SEND_INFO_UPDATE` pour l'envoi, état des
   pièces jointes avant/après `MAIL_INBOX_UPDATE` pour la réception.
+
+## 15. Phase 4 : livraison par courrier (implémentée, à valider en jeu)
+
+Relevé en jeu : `MAIL_SEND_INFO_UPDATE` à chaque changement du brouillon, puis `MAIL_SEND_SUCCESS` quand le destinataire est
+déjà vide (message 472 « Message envoyé. ») ; retirer une pièce jointe vide le courrier dans la boîte
+(`MAIL_INBOX_UPDATE`), puis `ITEM_PUSH`.
+
+- **Envoi** (module `Courriers`) : le dernier brouillon (destinataire complet, pièces jointes) est exploité à
+  `MAIL_SEND_SUCCESS`. Sans réussite (`MAIL_FAILED`, fermeture), rien n'est enregistré.
+- **Réception** : relevé des courriers avec pièces jointes à chaque `MAIL_INBOX_UPDATE` ; un courrier qui disparaît du relevé
+  (`Livraison.courriersRetires`, comparaison par contenu, pas par position) est un courrier dont les pièces jointes ont été
+  retirées. Le relevé repart de zéro à l'ouverture et à la fermeture de la boîte.
+- **Rapprochement** : identique à l'échange (mêmes règles et même confirmation, module `Echanges`) ; l'expéditeur peut porter
+  un royaume, qui est ignoré.
+- **Pas de retrait automatique** des pièces jointes : c'est une action protégée, le joueur clique.
