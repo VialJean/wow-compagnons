@@ -161,15 +161,15 @@ function Diagnostic:Lancer()
 		-- Épée usée (25) : arme, qualité 1 ; elle donne la forme des valeurs renvoyées.
 		local fn = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
 		if fn then
-			local ok, a, b, c, d, e, f, g, h, i, j, k, l = pcall(fn, 25)
+			-- Valeurs attendues : 1 nom, 2 lien, 3 qualité, 4 niveau d'objet, ... 12 classe, 13 sous-classe.
+			local r = { pcall(fn, 25) } -- r[1] = réussite, puis les valeurs décalées d'un cran
 			ligne(INFO, "GetItemInfo(25) -> %s, nom=%s, qualité=%s, niveauObjet=%s, classe=%s, sousClasse=%s",
-				tostring(ok), tostring(a), tostring(c), tostring(d), tostring(l), tostring(k))
-			if type(a) == "table" then
+				tostring(r[1]), tostring(r[2]), tostring(r[4]), tostring(r[5]), tostring(r[13]), tostring(r[14]))
+			if type(r[2]) == "table" then
+				local t = r[2]
 				ligne(INFO, "GetItemInfo renvoie une table : classID=%s subclassID=%s quality=%s itemLevel=%s",
-					tostring(a.classID), tostring(a.subclassID), tostring(a.quality), tostring(a.itemLevel))
+					tostring(t.classID), tostring(t.subclassID), tostring(t.quality), tostring(t.itemLevel))
 			end
-			ligne(INFO, "(autres valeurs : %s %s %s %s %s %s)", tostring(b), tostring(e), tostring(f), tostring(g), tostring(h), tostring(i))
-			ligne(INFO, "GetItemInfoInstant(25) -> %s", tostring(select("#", (C_Item and C_Item.GetItemInfoInstant or _G.GetItemInfoInstant or function() end)(25))))
 		end
 	end
 	-- Essai réel : une infobulle d'objet connue (Bandage en lin, 1251) se remplit-elle, et par quelle voie ?

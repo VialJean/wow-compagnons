@@ -16,15 +16,6 @@ local VUES = {
 	{ id = "mes", libelle = L.VUE_MES_COMMANDES, aide = L.AIDE_VUE_MES_COMMANDES },
 }
 
-local function securise(etape, fn, ...)
-	local ok, resultat = pcall(fn, ...)
-	if not ok then
-		ns.log("erreur", "ui", "%s : %s", etape, tostring(resultat))
-		return nil
-	end
-	return resultat
-end
-
 local function couleurQualite(q)
 	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q or 1]
 	if c then return c.r, c.g, c.b end

@@ -372,12 +372,12 @@ describe("Désenchanter : éligibilité (tranches du client)", function()
 	end)
 
 	it("une sous-classe précise l'emporte sur « toutes »", function()
-		local donnees = { tranches = {
+		local fictives = { tranches = {
 			{ classe = 4, sous = -1, qualite = 2, min = 1, max = 99 },
 			{ classe = 4, sous = 3, qualite = 2, min = 10, max = 20 },
 		} }
-		assert.are.equal(3, ns.Desenchanter.tranche(donnees, 4, 3, 2, 15).sous)
-		assert.are.equal(-1, ns.Desenchanter.tranche(donnees, 4, 1, 2, 15).sous)
+		assert.are.equal(3, ns.Desenchanter.tranche(fictives, 4, 3, 2, 15).sous)
+		assert.are.equal(-1, ns.Desenchanter.tranche(fictives, 4, 1, 2, 15).sous)
 	end)
 end)
 
