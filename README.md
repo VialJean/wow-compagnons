@@ -46,10 +46,9 @@ Les commandes existent en anglais et en français :
 | `/cpg diag` | | diagnostic du client (à lancer avec une fenêtre de métier ouverte) |
 | `/cpg char` | `perso` | métiers et recettes scannés pour le personnage |
 | `/cpg shopping` | `courses` | liste de courses pour mes commandes en cours, avec le stock de tous mes personnages |
-| `/cpg stock [on
-| `/cpg price [id ou lien montant|clear]` | `prix` | prix des composants (relevés à l'hôtel des ventes ou saisis à la main) |\|off\|now]` | | suivi du stock de composants de tous mes personnages |
-| `/cpg observer [on\|off
-| `/cpg price [id ou lien montant|clear]` | `prix` | prix des composants (relevés à l'hôtel des ventes ou saisis à la main) |\|clear\|show [n]]` | | relève les événements d'échange, de courrier et de fabrication (diagnostic) |
+| `/cpg stock [on\|off\|now]` | | suivi du stock de composants de tous mes personnages |
+| `/cpg price [id ou lien montant\|clear]` | `prix` | prix des composants (relevés à l'hôtel des ventes ou saisis à la main) |
+| `/cpg observer [on\|off\|clear\|show [n]]` | | relève les événements d'échange, de courrier, de fabrication et de l'hôtel des ventes (diagnostic) |
 | `/cpg debug` | | active ou coupe les messages de debug |
 | `/cpg log [n]` | `journal` | n dernières lignes du journal |
 
