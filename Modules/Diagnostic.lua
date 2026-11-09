@@ -45,6 +45,32 @@ function Diagnostic:Lancer()
 	ligne(INFO, "Version %s, build %s (%s), interface %s", version, build, dateBuild, tostring(toc))
 	ligne(toc == 16001 and OK or KO, "Interface attendue par le .toc : 16001")
 
+	-- 1 bis. Identité : comment le jeu nomme le personnage (sert à définir la clé d'un personnage)
+	section("Identité")
+	local function valeurs(...)
+		local t = {}
+		for i = 1, select("#", ...) do t[i] = string.format("%q", tostring((select(i, ...)))) end
+		return table.concat(t, ", ")
+	end
+	local function relever(nom, fn, ...)
+		local ok, a, b, c = pcall(fn, ...)
+		ligne(INFO, "%s -> %s", nom, ok and valeurs(a, b, c) or ("erreur : " .. tostring(a)))
+	end
+	relever('UnitName("player")', UnitName, "player")
+	relever('UnitFullName("player")', UnitFullName, "player")
+	relever('GetUnitName("player", false)', GetUnitName, "player", false)
+	relever('GetUnitName("player", true)', GetUnitName, "player", true)
+	relever("GetRealmName()", GetRealmName)
+	relever("GetNormalizedRealmName()", GetNormalizedRealmName)
+	relever("ns.clePersonnage()", ns.clePersonnage)
+	local guid = UnitGUID and UnitGUID("player")
+	relever('GetPlayerInfoByGUID(UnitGUID("player"))', GetPlayerInfoByGUID, guid)
+	if IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
+		for i = 1, math.min(3, (GetNumGuildMembers())) do
+			relever("GetGuildRosterInfo(" .. i .. ")", GetGuildRosterInfo, i)
+		end
+	end
+
 	-- 2. SavedVariables
 	section("SavedVariables")
 	local diag = ns.db.global.diag

@@ -23,7 +23,8 @@ read_globals = {
 	"C_ChatInfo", "C_EncodingUtil", "C_TradeSkillUI", "C_Timer", "C_XMLUtil",
 	"GetBuildInfo", "GetNormalizedRealmName", "GetRealmName", "GetTradeSkillLine",
 	"IsInGuild", "IsTrialAccount", "IsVeteranTrialAccount",
-	"UnitClass", "UnitName",
+	"UnitClass", "UnitName", "UnitFullName", "GetUnitName", "UnitGUID", "GetPlayerInfoByGUID",
+	"GetGuildRosterInfo", "GetNumGuildMembers",
 	"date", "time", "tinsert",
 	-- Interface
 	"CreateFrame", "UIParent", "UISpecialFrames", "GameTooltip",
