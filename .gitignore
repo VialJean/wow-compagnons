@@ -1,0 +1,12 @@
+# Bibliothèques : récupérées par le packager (.pkgmeta) ou par scripts/libs.sh
+Libs/
+
+# Sorties du packager
+.release/
+
+# Éditeurs
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store

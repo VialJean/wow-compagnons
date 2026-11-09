@@ -1,0 +1,26 @@
+## Interface: 16001
+## Title: Compagnons
+## Notes: Atelier de guilde : métiers et commandes de craft
+## Notes-frFR: Atelier de guilde : métiers et commandes de craft
+## Author: VialJean
+## Version: @project-version@
+## SavedVariables: CompagnonsDB
+## SavedVariablesPerCharacter: CompagnonsPersoDB
+## IconTexture: Interface\Icons\Trade_BlackSmithing
+## X-Category: Professions
+## X-License: MIT
+## X-Website: https://github.com/VialJean/wow-compagnons
+# ## X-Curse-Project-ID: à renseigner après création du projet CurseForge
+# ## X-Wago-ID: à renseigner après création du projet Wago
+
+embeds.xml
+
+Core\Locales.lua
+Core\Init.lua
+Core\Bitset.lua
+Debug\Log.lua
+
+Data\Recettes.lua
+
+Modules\Scanner.lua
+Modules\Diagnostic.lua

@@ -1,0 +1,26 @@
+name: Release
+
+# Un tag vX.Y.Z construit le paquet (bibliothèques comprises) et le publie.
+# Secrets à créer dans le dépôt : CF_API_KEY (CurseForge), WAGO_API_TOKEN (Wago).
+# Tant qu'ils sont absents, seule la release GitHub est créée.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
