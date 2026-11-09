@@ -18,9 +18,13 @@ embeds.xml
 Core\Locales.lua
 Core\Init.lua
 Core\Bitset.lua
+Core\Catalogue.lua
 Debug\Log.lua
 
 Data\Recettes.lua
 
 Modules\Scanner.lua
 Modules\Diagnostic.lua
+
+UI\Fenetre.lua
+UI\PanneauMetier.lua

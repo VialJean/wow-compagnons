@@ -34,6 +34,12 @@ function ns.clePersonnage()
 	return nom .. "-" .. (royaume or "?")
 end
 
+--- Vrai si le personnage est connecté. Pour l'instant seul le personnage courant l'est ;
+-- la synchro de guilde étendra cette fonction aux autres membres.
+function ns.estEnLigne(cle)
+	return cle == ns.clePersonnage()
+end
+
 function Compagnons:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("CompagnonsDB", defauts, true)
 	ns.db = self.db
@@ -52,6 +58,13 @@ function Compagnons:OnEnable()
 	CompagnonsPersoDB = CompagnonsPersoDB or {}
 	CompagnonsPersoDB.sessions = (CompagnonsPersoDB.sessions or 0) + 1
 
+	-- Base de recettes croisée avec les métiers connus ; mise à jour après chaque scan.
+	ns.catalogue = ns.Catalogue.nouveau(ns.Recettes, self.db.global.personnages)
+	self:RegisterMessage("COMPAGNONS_METIER_SCANNE", function()
+		ns.catalogue:Actualiser()
+		self:SendMessage("COMPAGNONS_CATALOGUE_MAJ")
+	end)
+
 	ns.log("info", "init", "Compagnons %s chargé (protocole %d, session %d)",
 		ns.VERSION, ns.PROTOCOLE, diag.sessions)
 end
@@ -60,7 +73,9 @@ function Compagnons:Commande(saisie)
 	local action, arg = self:GetArgs(saisie, 2)
 	action = action and action:lower() or ""
 
-	if action == "debug" then
+	if action == "" or action == "recettes" then
+		self:GetModule("Fenetre"):Basculer()
+	elseif action == "debug" then
 		local p = self.db.profile
 		p.debug = not p.debug
 		self:Print(p.debug and L.DEBUG_ON or L.DEBUG_OFF)
@@ -72,6 +87,7 @@ function Compagnons:Commande(saisie)
 		self:GetModule("Diagnostic"):Lancer()
 	else
 		self:Print(L.AIDE_TITRE)
+		print("  " .. L.AIDE_OUVRIR)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)

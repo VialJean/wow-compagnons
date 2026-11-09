@@ -1,0 +1,212 @@
+-- Catalogue : la base de recettes embarquée croisée avec les métiers connus des personnages.
+-- Lua pur, sans API WoW, pour être testable hors du jeu.
+--
+-- Entrées :
+--   donnees      = ns.Recettes (Data/Recettes.lua)
+--   personnages  = CompagnonsDB.global.personnages
+local _, ns = ...
+
+local Catalogue = {}
+Catalogue.__index = Catalogue
+ns.Catalogue = Catalogue
+
+-- Lettres accentuées françaises (UTF-8) → lettre simple. La recherche ignore casse et accents.
+local ACCENTS = {
+	["à"] = "a", ["â"] = "a", ["ä"] = "a", ["À"] = "a", ["Â"] = "a", ["Ä"] = "a",
+	["é"] = "e", ["è"] = "e", ["ê"] = "e", ["ë"] = "e", ["É"] = "e", ["È"] = "e", ["Ê"] = "e", ["Ë"] = "e",
+	["î"] = "i", ["ï"] = "i", ["Î"] = "i", ["Ï"] = "i",
+	["ô"] = "o", ["ö"] = "o", ["Ô"] = "o", ["Ö"] = "o",
+	["ù"] = "u", ["û"] = "u", ["ü"] = "u", ["Ù"] = "u", ["Û"] = "u", ["Ü"] = "u",
+	["ç"] = "c", ["Ç"] = "c", ["œ"] = "oe", ["Œ"] = "oe", ["æ"] = "ae", ["Æ"] = "ae",
+	["’"] = "'",
+}
+
+--- Minuscules sans accents.
+function Catalogue.normaliser(texte)
+	if not texte or texte == "" then return "" end
+	texte = texte:gsub("[\195\197\226][\128-\191]*", function(c) return ACCENTS[c] or c end)
+	return texte:lower()
+end
+local normaliser = Catalogue.normaliser
+
+--- Crée un catalogue. `personnages` peut être remplacé plus tard par :Actualiser().
+function Catalogue.nouveau(donnees, personnages)
+	local c = setmetatable({
+		donnees = donnees or { metiers = {}, recettes = {}, objets = {} },
+		recherche = {}, -- [spellID] = texte normalisé (recette + composants)
+		triees = nil,   -- spellIDs triés une fois pour toutes
+		connus = {},    -- [spellID] = { { cle, nom, classe, niveau }, ... }
+	}, Catalogue)
+	c:Actualiser(personnages)
+	return c
+end
+
+local function nomMetier(donnees, id)
+	local m = donnees.metiers[id]
+	return m and m.nom or tostring(id)
+end
+
+--- Identifie le métier de la base correspondant à un métier scanné (par id, sinon par nom).
+local function idMetier(donnees, metier, cleStockage)
+	if metier.id and donnees.metiers[metier.id] then return metier.id end
+	if type(cleStockage) == "number" and donnees.metiers[cleStockage] then return cleStockage end
+	local voulu = normaliser(metier.nom or (type(cleStockage) == "string" and cleStockage) or "")
+	if voulu == "" then return nil end
+	for id, m in pairs(donnees.metiers) do
+		if normaliser(m.nom) == voulu then return id end
+	end
+	return nil
+end
+
+--- Reconstruit l'index « recette → personnages qui la connaissent ».
+function Catalogue:Actualiser(personnages)
+	if personnages then self.personnages = personnages end
+	self.connus = {}
+	for cle, perso in pairs(self.personnages or {}) do
+		for cleMetier, metier in pairs(perso.metiers or {}) do
+			local id = idMetier(self.donnees, metier, cleMetier)
+			for _, spellID in ipairs(metier.recettes or {}) do
+				local r = self.donnees.recettes[spellID]
+				if r and (id == nil or r.metier == id) then
+					local liste = self.connus[spellID]
+					if not liste then
+						liste = {}
+						self.connus[spellID] = liste
+					end
+					liste[#liste + 1] = {
+						cle = cle,
+						nom = perso.nom or cle,
+						classe = perso.classe,
+						niveau = metier.niveau,
+					}
+				end
+			end
+		end
+	end
+	for _, liste in pairs(self.connus) do
+		table.sort(liste, function(a, b) return a.cle < b.cle end)
+	end
+end
+
+--- Personnages qui connaissent la recette : { { cle, nom, classe, niveau }, ... }.
+function Catalogue:Crafteurs(spellID)
+	return self.connus[spellID] or {}
+end
+
+local function triees(self)
+	if self.triees then return self.triees end
+	local liste = {}
+	for spellID in pairs(self.donnees.recettes) do liste[#liste + 1] = spellID end
+	local d = self.donnees
+	table.sort(liste, function(a, b)
+		local ra, rb = d.recettes[a], d.recettes[b]
+		if ra.niveau ~= rb.niveau then return ra.niveau < rb.niveau end
+		local na, nb = normaliser(ra.nom), normaliser(rb.nom)
+		if na ~= nb then return na < nb end
+		return a < b
+	end)
+	self.triees = liste
+	return liste
+end
+
+local function texteRecherche(self, spellID)
+	local t = self.recherche[spellID]
+	if t then return t end
+	local r = self.donnees.recettes[spellID]
+	local morceaux = { normaliser(r.nom) }
+	for _, comp in ipairs(r.composants or {}) do
+		local objet = self.donnees.objets and self.donnees.objets[comp[1]]
+		if objet and objet[1] ~= "" then morceaux[#morceaux + 1] = normaliser(objet[1]) end
+	end
+	t = table.concat(morceaux, "\n")
+	self.recherche[spellID] = t
+	return t
+end
+
+--- Filtre les recettes.
+-- options :
+--   texte        chaîne cherchée dans le nom de la recette et de ses composants (tous les mots)
+--   metier       skillLineID, ou nil pour tous
+--   craftable    vrai : au moins un personnage la connaît
+--   enLigne      vrai : au moins un personnage connecté la connaît (nécessite estEnLigne)
+--   inconnue     vrai : personne ne la connaît
+--   estEnLigne   fonction(cle) -> booléen
+-- Renvoie la liste des spellIDs, du plus bas niveau au plus haut.
+function Catalogue:Chercher(options)
+	options = options or {}
+	local mots = {}
+	for mot in normaliser(options.texte or ""):gmatch("%S+") do mots[#mots + 1] = mot end
+
+	local resultat = {}
+	for _, spellID in ipairs(triees(self)) do
+		local r = self.donnees.recettes[spellID]
+		local garde = options.metier == nil or r.metier == options.metier
+
+		if garde and #mots > 0 then
+			local haystack = texteRecherche(self, spellID)
+			for _, mot in ipairs(mots) do
+				if not haystack:find(mot, 1, true) then
+					garde = false
+					break
+				end
+			end
+		end
+
+		if garde and (options.craftable or options.enLigne or options.inconnue) then
+			local crafteurs = self.connus[spellID]
+			local nb = crafteurs and #crafteurs or 0
+			if options.craftable and nb == 0 then garde = false end
+			if options.inconnue and nb > 0 then garde = false end
+			if garde and options.enLigne then
+				local present = false
+				for i = 1, nb do
+					if options.estEnLigne and options.estEnLigne(crafteurs[i].cle) then
+						present = true
+						break
+					end
+				end
+				garde = present
+			end
+		end
+
+		if garde then resultat[#resultat + 1] = spellID end
+	end
+	return resultat
+end
+
+--- Liste des métiers de la base : { { id, nom, total }, ... }, triée par nom.
+function Catalogue:Metiers()
+	local nombres = {}
+	for _, r in pairs(self.donnees.recettes) do
+		nombres[r.metier] = (nombres[r.metier] or 0) + 1
+	end
+	local liste = {}
+	for id, total in pairs(nombres) do
+		liste[#liste + 1] = { id = id, nom = nomMetier(self.donnees, id), total = total }
+	end
+	table.sort(liste, function(a, b)
+		local na, nb = normaliser(a.nom), normaliser(b.nom)
+		if na ~= nb then return na < nb end
+		return a.id < b.id
+	end)
+	return liste
+end
+
+--- Résumé des quantités de composants d'une recette : { { itemID, qte, nom, qualite }, ... }.
+function Catalogue:Composants(spellID)
+	local r = self.donnees.recettes[spellID]
+	local liste = {}
+	if not r then return liste end
+	for _, comp in ipairs(r.composants or {}) do
+		local objet = self.donnees.objets and self.donnees.objets[comp[1]]
+		liste[#liste + 1] = {
+			itemID = comp[1],
+			qte = comp[2],
+			nom = objet and objet[1] or "",
+			qualite = objet and objet[2] or 1,
+		}
+	end
+	return liste
+end
+
+return Catalogue

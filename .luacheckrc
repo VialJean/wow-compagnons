@@ -24,7 +24,15 @@ read_globals = {
 	"GetBuildInfo", "GetNormalizedRealmName", "GetRealmName", "GetTradeSkillLine",
 	"IsInGuild", "IsTrialAccount", "IsVeteranTrialAccount",
 	"UnitClass", "UnitName",
-	"date", "time",
+	"date", "time", "tinsert",
+	-- Interface
+	"CreateFrame", "UIParent", "UISpecialFrames", "GameTooltip",
+	"CreateDataProvider", "CreateScrollBoxListLinearView", "ScrollUtil", "ScrollBoxConstants",
+	"ButtonFrameTemplate_HideButtonBar", "PanelTemplates_TabResize",
+	"PanelTemplates_SelectTab", "PanelTemplates_DeselectTab",
+	"ITEM_QUALITY_COLORS", "RAID_CLASS_COLORS",
+	"C_Item", "C_Spell", "GetItemIcon", "GetSpellTexture", "GetItemCount",
+	"ProfessionsFrame", "TradeSkillFrame",
 }
 
 files["tests/"] = { std = "+busted" }
