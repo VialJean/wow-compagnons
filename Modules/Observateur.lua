@@ -22,6 +22,9 @@ local EVENEMENTS = {
 	-- fabrication
 	"UNIT_SPELLCAST_START", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
 	"TRADE_SKILL_CRAFT_BEGIN", "TRADE_SKILL_ITEM_CRAFTED_RESULT", "TRADE_SKILL_CRAFTING_BEGIN",
+	-- hôtel des ventes (pour une estimation de coût : quelles API et quels événements existent ?)
+	"AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_ITEM_LIST_UPDATE", "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED",
+	"COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED",
 	-- sacs, banque, messages
 	"BAG_UPDATE_DELAYED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "ITEM_PUSH",
 	"CHAT_MSG_SYSTEM", "CHAT_MSG_LOOT", "UI_INFO_MESSAGE", "UI_ERROR_MESSAGE",
@@ -121,6 +124,30 @@ local function instantaneEnvoi()
 	return "envoi : " .. table.concat(lignes, " | ")
 end
 
+--- Quelles API de l'hôtel des ventes le client expose, et ce qu'elles renvoient pour la liste affichée.
+local function instantaneVentes()
+	local lignes = {}
+	local api = _G.C_AuctionHouse
+	for _, nom in ipairs({ "SendBrowseQuery", "SendSearchQuery", "GetNumCommoditySearchResults",
+		"GetCommoditySearchResultInfo", "GetBrowseResults", "GetItemSearchResultInfo" }) do
+		lignes[#lignes + 1] = "C_AuctionHouse." .. nom .. "=" .. tostring(api ~= nil and api[nom] ~= nil)
+	end
+	for _, nom in ipairs({ "QueryAuctionItems", "GetNumAuctionItems", "GetAuctionItemInfo", "GetAuctionItemLink",
+		"CanSendAuctionQuery" }) do
+		lignes[#lignes + 1] = nom .. "=" .. tostring(_G[nom] ~= nil)
+	end
+	if _G.GetNumAuctionItems then
+		local ok, nombre, total = pcall(_G.GetNumAuctionItems, "list")
+		lignes[#lignes + 1] = "GetNumAuctionItems(list)=" .. tostring(ok and nombre) .. "/" .. tostring(ok and total)
+		if ok and nombre and nombre > 0 and _G.GetAuctionItemInfo then
+			local ok2, nom, _, quantite, _, _, _, _, mise, _, achat = pcall(_G.GetAuctionItemInfo, "list", 1)
+			lignes[#lignes + 1] = string.format("premier lot : %s x%s mise=%s achat=%s", tostring(nom), tostring(quantite),
+				tostring(mise), tostring(ok2 and achat))
+		end
+	end
+	return "hôtel des ventes : " .. table.concat(lignes, " | ")
+end
+
 -- ---------------------------------------------------------------------------------------------
 -- Événements
 -- ---------------------------------------------------------------------------------------------
@@ -145,6 +172,8 @@ function Observateur:SurEvenement(evenement, ...)
 		instantane = instantaneCourrier
 	elseif evenement == "MAIL_SEND_INFO_UPDATE" or evenement == "MAIL_SEND_SUCCESS" then
 		instantane = instantaneEnvoi
+	elseif evenement == "AUCTION_HOUSE_SHOW" or evenement == "AUCTION_ITEM_LIST_UPDATE" then
+		instantane = instantaneVentes
 	end
 	if instantane then
 		local texte, erreur = securise("instantané", instantane)
