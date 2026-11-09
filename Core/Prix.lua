@@ -17,9 +17,68 @@ function Prix.enregistrer(prix, itemID, unitaire, maintenant)
 	if unitaire < 1 or unitaire > MAX_PRIX then return false end
 	local actuel = prix[itemID]
 	if actuel and actuel.t > maintenant then return false end -- on ne remplace pas par un relevé plus ancien
-	if actuel and actuel.p == unitaire and actuel.t == maintenant then return false end
+	-- Deux relevés de même date : on garde le moins cher, pour que tous les clients tranchent pareil.
+	if actuel and actuel.t == maintenant and unitaire >= actuel.p then return false end
 	prix[itemID] = { p = unitaire, t = maintenant }
 	return true
+end
+
+Prix.MAX_LOT = 200            -- un message qui annonce plus de prix est ignoré en entier
+Prix.TOLERANCE_FUTUR = 300    -- un horodatage plus loin dans le futur est refusé (horloges qui diffèrent un peu)
+
+--- Valide un lot de prix reçu du réseau : { [itemID] = { p, t } }. Ne garde que les composants de la base, avec un prix
+-- plausible et un horodatage qui n'est pas dans le futur. Un lot trop gros est refusé en entier.
+function Prix.valider(brut, donnees, maintenant)
+	local valides = {}
+	if type(brut) ~= "table" then return valides end
+	local n = 0
+	for _ in pairs(brut) do
+		n = n + 1
+		if n > Prix.MAX_LOT then return {} end
+	end
+	for itemID, e in pairs(brut) do
+		if type(itemID) == "number" and donnees.objets and donnees.objets[itemID] and type(e) == "table"
+			and type(e.p) == "number" and type(e.t) == "number" and e.p == e.p and e.t == e.t
+			and e.p >= 1 and e.p <= MAX_PRIX and e.t >= 0 and e.t <= maintenant + Prix.TOLERANCE_FUTUR then
+			valides[itemID] = { p = math.floor(e.p + 0.5), t = e.t }
+		end
+	end
+	return valides
+end
+
+--- Fusionne des prix déjà validés : le plus récent gagne. Renvoie la liste des identifiants modifiés.
+function Prix.fusionner(prix, valides)
+	local changes = {}
+	for itemID, e in pairs(valides) do
+		if Prix.enregistrer(prix, itemID, e.p, e.t) then changes[#changes + 1] = itemID end
+	end
+	table.sort(changes)
+	return changes
+end
+
+--- Somme de contrôle des prix (identifiant, prix, date), indépendante de l'ordre de parcours.
+function Prix.hash(prix)
+	local ids = {}
+	for id in pairs(prix) do ids[#ids + 1] = id end
+	table.sort(ids)
+	local morceaux = {}
+	for i, id in ipairs(ids) do morceaux[i] = id .. ":" .. prix[id].p .. ":" .. prix[id].t end
+	return ns.Profil.adler(table.concat(morceaux, ";"))
+end
+
+--- Résumé { [itemID] = { t, p } } : ce qu'on annonce à un pair pour savoir qui a le prix le plus récent (le prix
+-- départage deux relevés de même date).
+function Prix.horodatages(prix)
+	local t = {}
+	for id, e in pairs(prix) do t[id] = { e.t, e.p } end
+	return t
+end
+
+--- Le relevé local `e` l'emporte-t-il sur le résumé distant { t, p } ? (même règle que `enregistrer`)
+function Prix.meilleur(e, distant)
+	if type(distant) ~= "table" or type(distant[1]) ~= "number" or type(distant[2]) ~= "number" then return true end
+	if e.t ~= distant[1] then return e.t > distant[1] end
+	return e.p < distant[2]
 end
 
 --- Le prix unitaire le plus bas d'une liste de lots { { quantite, achat }, ... } (achat immédiat, en cuivre pour

@@ -2,7 +2,7 @@
 -- avec connexions, déconnexions et scans aléatoires. Vérifie que tous les clients convergent. busted tests
 local function charger()
 	local ns = {}
-	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Synchro.lua" }) do
+	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Prix.lua", "Core/Synchro.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
 	return ns
@@ -12,7 +12,7 @@ local ns = charger()
 local Synchro, Profil, Bitset = ns.Synchro, ns.Profil, ns.Bitset
 
 -- Base de recettes factice : 2 métiers de 64 recettes.
-local donnees = { metiers = {}, recettes = {}, objets = {} }
+local donnees = { metiers = {}, recettes = {}, objets = { [5001] = { nom = "Lin" }, [5002] = { nom = "Fer" } } }
 for _, def in ipairs({ { 171, "Alchimie", 1000 }, { 164, "Forge", 2000 } }) do
 	local ordre = {}
 	for i = 1, 64 do
@@ -83,11 +83,12 @@ local function nouveauReseau(graine)
 	end
 
 	function r:client(nom)
-		local c = { nom = nom, profils = {}, commandes = {}, enLigne = false }
+		local c = { nom = nom, profils = {}, commandes = {}, prix = {}, enLigne = false }
 		c.moteur = Synchro.nouveau({
 			donnees = donnees,
 			profils = c.profils,
 			commandes = c.commandes,
+			prix = c.prix,
 			moi = function() return nom end,
 			proprietaire = function(cle) return cle == nom end,
 			envoyer = function(canal, cible, genre, charge) r:livrer(c, canal, cible, genre, charge) end,
@@ -579,5 +580,86 @@ describe("Progression des commandes", function()
 		r:avancer(120)
 		assert.are.equal(4, Commandes.crafte(a.commandes[c.id]))
 		assert.is_true(identiques({ a, b }))
+	end)
+end)
+
+-- ---------------------------------------------------------------------------------------------
+-- Partage des prix
+-- ---------------------------------------------------------------------------------------------
+
+describe("Synchro des prix", function()
+	it("un prix relevé est diffusé à la guilde après le regroupement", function()
+		local r, a, b = deuxClients(60)
+		ns.Prix.enregistrer(a.prix, 5001, 120, r.t)
+		a.moteur:PublierPrix(5001)
+		r:avancer(2)
+		assert.is_nil(b.prix[5001])        -- regroupé sur quelques secondes
+		r:avancer(10)
+		assert.are.equal(120, b.prix[5001].p)
+	end)
+
+	it("à la connexion, chacun récupère les prix les plus récents de l'autre", function()
+		local r = nouveauReseau(61)
+		local a, b = r:client("Alice Durand"), r:client("Bastien Roux")
+		a.profils[a.nom] = profilAleatoire(r.alea, a.nom, 10)
+		b.profils[b.nom] = profilAleatoire(r.alea, b.nom, 10)
+		r.t = 1000
+		ns.Prix.enregistrer(a.prix, 5001, 100, 500)
+		ns.Prix.enregistrer(b.prix, 5001, 90, 900)   -- plus récent
+		ns.Prix.enregistrer(a.prix, 5002, 40, 800)   -- inconnu de b
+		connecter(a) ; connecter(b)
+		r:avancer(60)
+		assert.are.equal(90, a.prix[5001].p)
+		assert.are.equal(90, b.prix[5001].p)
+		assert.are.equal(40, b.prix[5002].p)
+		assert.are.equal(a.moteur:HashPrix(), b.moteur:HashPrix())
+	end)
+
+	it("deux prix de même date : tous retiennent le moins cher", function()
+		local r = nouveauReseau(62)
+		local a, b = r:client("Alice Durand"), r:client("Bastien Roux")
+		a.profils[a.nom] = profilAleatoire(r.alea, a.nom, 10)
+		b.profils[b.nom] = profilAleatoire(r.alea, b.nom, 10)
+		r.t = 1000
+		ns.Prix.enregistrer(a.prix, 5001, 100, 500)
+		ns.Prix.enregistrer(b.prix, 5001, 80, 500)
+		connecter(a) ; connecter(b)
+		r:avancer(60)
+		assert.are.equal(80, a.prix[5001].p)
+		assert.are.equal(80, b.prix[5001].p)
+	end)
+
+	it("rejette les prix forgés : objet inconnu, futur, valeur absurde, lot démesuré", function()
+		local r, a = deuxClients(63)
+		local v = Synchro.PROTOCOLE
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = { [999999] = { p = 5, t = 1 } } }, "Bastien-Roux")
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = { [5001] = { p = 5, t = r.t + 100000 } } }, "Bastien-Roux")
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = { [5001] = { p = -5, t = 1 } } }, "Bastien-Roux")
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = { [5001] = { p = 0 / 0, t = 1 } } }, "Bastien-Roux")
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = "n'importe quoi" }, "Bastien-Roux")
+		local gros = {}
+		for i = 1, 300 do gros[i + 10000] = { p = 5, t = 1 } end
+		a.moteur:Recevoir("PRIX_UPD", { v = v, prix = gros }, "Bastien-Roux")
+		assert.is_nil(next(a.prix))
+	end)
+
+	it("un client sans gestion des prix (ancien protocole) ne perturbe pas la synchro", function()
+		local r = nouveauReseau(64)
+		local a, b = r:client("Alice Durand"), r:client("Bastien Roux")
+		a.profils[a.nom] = profilAleatoire(r.alea, a.nom, 10)
+		ns.Prix.enregistrer(a.prix, 5001, 100, 500)
+		-- b se comporte comme une v2 : il ignore les genres PRIX et n'annonce ni hp ni x
+		local recevoir = b.moteur.Recevoir
+		b.moteur.Recevoir = function(self, genre, charge, exp)
+			if genre == "PRIX" or genre == "PRIX_UPD" then return end
+			if genre == "HASHES" and charge.liste then charge.liste.x = nil end
+			return recevoir(self, genre, charge, exp)
+		end
+		b.moteur.HashPrix = function() return 0 end
+		r.t = 1000
+		connecter(a) ; connecter(b)
+		r:avancer(60)
+		assert.is_true(identiques({ a, b }))
+		assert.is_nil(b.prix[5001])
 	end)
 end)

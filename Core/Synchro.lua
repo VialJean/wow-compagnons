@@ -13,6 +13,14 @@
 --   PROFILE_UPD  GUILD    { v, profil }            un personnage vient d'être scanné
 --   ORDER_NEW    GUILD    { v, commande }          une commande vient d'être créée
 --   ORDER_UPD    GUILD    { v, commande }          une commande vient de changer d'état
+--
+-- Prix des composants (docs/livraison.md, §11), hors du hash global pour rester compatible avec les versions qui ne les
+-- connaissent pas : les champs `hp` et `x` et les genres PRIX et PRIX_UPD sont simplement ignorés par celles-ci.
+--   HELLO        ... hp = hash des prix           annonce aussi le hash des prix
+--   HASHES       ... liste.x = { [itemID] = {t,p} }  date et prix de nos relevés (présent seulement si on gère les prix)
+--   PROFILE_REQ  ... px = { itemID, ... }          prix demandés
+--   PRIX         WHISPER  { v, prix = { [itemID] = { p, t } } }   prix transmis pendant une synchro (100 au plus)
+--   PRIX_UPD     GUILD    { v, prix = { ... } }    prix qui viennent d'être relevés (regroupés sur 5 s)
 local _, ns = ...
 
 local Synchro = {}
@@ -26,6 +34,8 @@ local DELAI_REPONSE = 2       -- les pairs répondent après un délai aléatoir
 local DELAI_REANNONCE = 5     -- regroupe plusieurs changements en une seule annonce
 local MAX_DEMANDES = 400
 local MAX_COMMANDES = 600     -- au-delà, les nouvelles commandes reçues sont ignorées
+local PRIX_PAR_MESSAGE = 100  -- un lot de prix plus gros est coupé en plusieurs messages
+local DELAI_PRIX = 5          -- regroupe les prix relevés à l'hôtel des ventes avant de les diffuser
 
 --- options :
 --   donnees       ns.Recettes
@@ -39,6 +49,8 @@ local MAX_COMMANDES = 600     -- au-delà, les nouvelles commandes reçues sont 
 --   alea          fonction -> nombre dans [0, 1[
 --   normaliser    fonction(expéditeur brut) -> clé (par défaut : « Prénom-Nom » devient « Prénom Nom »)
 --   surMaj        fonction(cle) appelée quand un profil est modifié depuis le réseau
+--   prix          table itemID -> { p, t } (prix unitaires des composants)
+--   surPrix       fonction(ids) appelée quand des prix sont modifiés depuis le réseau
 --   surCommande   fonction(id, avant, apres) appelée quand une commande change depuis le réseau
 --   journal       fonction(niveau, format, ...)
 function Synchro.nouveau(o)
@@ -46,6 +58,10 @@ function Synchro.nouveau(o)
 	s.donnees = o.donnees
 	s.profils = o.profils
 	s.commandes = o.commandes or {}
+	s.prix = o.prix or {}
+	s.surPrix = o.surPrix or function() end
+	s.prixEnAttente = {}
+	s.prixPlanifie = false
 	s.moi = o.moi
 	s.proprietaire = o.proprietaire or function() return false end
 	s.envoyerBrut = o.envoyer
@@ -83,6 +99,11 @@ function Synchro:HashGlobal()
 	return ns.Profil.adler(liste(self.profils) .. "|" .. liste(self.commandes))
 end
 
+--- Hash des prix : volontairement séparé du hash global.
+function Synchro:HashPrix()
+	return ns.Prix.hash(self.prix)
+end
+
 function Synchro:Compter()
 	local n = 0
 	for _ in pairs(self.profils) do n = n + 1 end
@@ -113,7 +134,41 @@ function Synchro:Annoncer()
 	self.partenaire = nil -- nouvelle ronde : on peut de nouveau choisir un partenaire
 	self.partenaireJusqua = 0
 	self:Nettoyer()
-	self:Envoyer("GUILD", nil, "HELLO", { v = Synchro.PROTOCOLE, h = self:HashGlobal(), n = self:Compter() })
+	self:Envoyer("GUILD", nil, "HELLO", {
+		v = Synchro.PROTOCOLE, h = self:HashGlobal(), n = self:Compter(), hp = self:HashPrix(),
+	})
+end
+
+--- Envoie des prix { [itemID] = { p, t } } par lots de 100 au plus.
+function Synchro:EnvoyerPrix(canal, cible, genre, prix)
+	local ids = {}
+	for id in pairs(prix) do ids[#ids + 1] = id end
+	table.sort(ids)
+	for debut = 1, #ids, PRIX_PAR_MESSAGE do
+		local lot = {}
+		for i = debut, math.min(debut + PRIX_PAR_MESSAGE - 1, #ids) do
+			local e = prix[ids[i]]
+			lot[ids[i]] = { p = e.p, t = e.t }
+		end
+		self:Envoyer(canal, cible, genre, { v = Synchro.PROTOCOLE, prix = lot })
+	end
+end
+
+--- Un prix vient d'être relevé ici : on le diffuse à la guilde, regroupé avec les suivants.
+function Synchro:PublierPrix(itemID)
+	if not self.prix[itemID] then return end
+	self.prixEnAttente[itemID] = true
+	if self.prixPlanifie then return end
+	self.prixPlanifie = true
+	self.planifier(DELAI_PRIX, function()
+		self.prixPlanifie = false
+		local lot = {}
+		for id in pairs(self.prixEnAttente) do
+			if self.prix[id] then lot[id] = self.prix[id] end
+		end
+		self.prixEnAttente = {}
+		if next(lot) then self:EnvoyerPrix("GUILD", nil, "PRIX_UPD", lot) end
+	end)
 end
 
 function Synchro:ProgrammerAnnonce()
@@ -202,9 +257,19 @@ function Synchro:IntegrerCommande(brut)
 	return true
 end
 
+--- Intègre un lot de prix venu du réseau (validé, le plus récent gagne). Renvoie vrai s'il a modifié nos prix.
+function Synchro:IntegrerPrix(brut)
+	local valides = ns.Prix.valider(brut, self.donnees, self.maintenant())
+	local changes = ns.Prix.fusionner(self.prix, valides)
+	if #changes == 0 then return false end
+	self.surPrix(changes)
+	return true
+end
+
 local GENRES = {
 	HELLO = true, PRET = true, HASHES = true, PROFILE_REQ = true,
 	PROFILE = true, PROFILE_UPD = true, ORDER = true, ORDER_NEW = true, ORDER_UPD = true,
+	PRIX = true, PRIX_UPD = true,
 }
 
 function Synchro:Recevoir(genre, charge, expediteur)
@@ -233,27 +298,36 @@ function Synchro:Recevoir(genre, charge, expediteur)
 	elseif genre == "PROFILE_UPD" then
 		-- Diffusé à toute la guilde en même temps : inutile de le répéter.
 		self:Integrer(charge.profil)
+	elseif genre == "PRIX" then
+		if self:IntegrerPrix(charge.prix) then self:ProgrammerAnnonce() end
+	elseif genre == "PRIX_UPD" then
+		self:IntegrerPrix(charge.prix)
 	else -- ORDER_NEW, ORDER_UPD
 		self:IntegrerCommande(charge.commande)
 	end
 end
 
+--- L'état d'un pair diffère-t-il du nôtre ? Les profils et commandes se comparent par le hash global ; les prix par leur
+-- propre hash, seulement si le pair en annonce un (une ancienne version n'en annonce pas).
+function Synchro:Differe(charge)
+	if charge.h ~= self:HashGlobal() then return true end
+	return type(charge.hp) == "number" and charge.hp ~= self:HashPrix()
+end
+
 function Synchro:SurHello(charge, expediteur)
-	local monHash = self:HashGlobal()
-	if charge.h == monHash then return end
+	if not self:Differe(charge) then return end
 	-- On ne répond qu'une fois par couple d'états (le nôtre, le sien) : une annonce identique est ignorée.
-	local etat = monHash .. ":" .. tostring(charge.h)
-	if self.reponduA[expediteur] == etat then return end
+	local function etat() return self:HashGlobal() .. ":" .. self:HashPrix() .. ":" .. tostring(charge.h) .. ":" .. tostring(charge.hp) end
+	if self.reponduA[expediteur] == etat() then return end
 
 	-- Délai aléatoire : évite que tous les pairs répondent en même temps.
 	self.planifier(self.alea() * DELAI_REPONSE, function()
-		local maintenant = self:HashGlobal()
-		if maintenant == charge.h then return end -- on s'est synchronisés entre-temps
-		local actuel = maintenant .. ":" .. tostring(charge.h)
+		if not self:Differe(charge) then return end -- on s'est synchronisés entre-temps
+		local actuel = etat()
 		if self.reponduA[expediteur] == actuel then return end
 		self.reponduA[expediteur] = actuel
 		-- Réponse minuscule : l'annonceur n'en retiendra qu'une, la liste ne voyagera qu'avec celle-là.
-		self:Envoyer("WHISPER", expediteur, "PRET", { v = Synchro.PROTOCOLE, h = maintenant })
+		self:Envoyer("WHISPER", expediteur, "PRET", { v = Synchro.PROTOCOLE, h = self:HashGlobal() })
 	end)
 end
 
@@ -268,7 +342,9 @@ function Synchro:SurPret(_, expediteur)
 	local p, c = {}, {}
 	for cle, profil in pairs(self.profils) do p[cle] = { profil.maj, profil.hash } end
 	for id, o in pairs(self.commandes) do c[id] = { o.rev, o.maj, o.par, o.hash } end
-	self:Envoyer("WHISPER", expediteur, "HASHES", { v = Synchro.PROTOCOLE, liste = { p = p, c = c } })
+	self:Envoyer("WHISPER", expediteur, "HASHES", {
+		v = Synchro.PROTOCOLE, liste = { p = p, c = c, x = ns.Prix.horodatages(self.prix) },
+	})
 end
 
 local function nombre(v) return type(v) == "number" end
@@ -300,8 +376,33 @@ function Synchro:SurHashes(charge, expediteur)
 			end
 		end
 	end
-	if #demandeP > 0 or #demandeC > 0 then
-		self:Envoyer("WHISPER", expediteur, "PROFILE_REQ", { v = Synchro.PROTOCOLE, cles = demandeP, ids = demandeC })
+	-- Prix : seulement si le pair les gère (il envoie alors ses horodatages dans `x`, même vide).
+	local demandeX = {}
+	local distantsX = type(liste.x) == "table" and liste.x or nil
+	if distantsX then
+		for id, r in pairs(distantsX) do
+			if type(id) == "number" and type(r) == "table" and nombre(r[1]) and nombre(r[2])
+				and self.donnees.objets and self.donnees.objets[id] then
+				local local_ = self.prix[id]
+				if (not local_ or not ns.Prix.meilleur(local_, r)) and (local_ == nil or local_.t ~= r[1] or r[2] < local_.p)
+					and #demandeX < MAX_DEMANDES then
+					demandeX[#demandeX + 1] = id
+				end
+			end
+		end
+		local pousser = {}
+		for id, e in pairs(self.prix) do
+			if ns.Prix.meilleur(e, distantsX[id]) and not (type(distantsX[id]) == "table" and distantsX[id][1] == e.t and distantsX[id][2] == e.p) then
+				pousser[id] = e
+			end
+		end
+		if next(pousser) then self:EnvoyerPrix("WHISPER", expediteur, "PRIX", pousser) end
+	end
+
+	if #demandeP > 0 or #demandeC > 0 or #demandeX > 0 then
+		self:Envoyer("WHISPER", expediteur, "PROFILE_REQ", {
+			v = Synchro.PROTOCOLE, cles = demandeP, ids = demandeC, px = demandeX,
+		})
 	end
 
 	-- Ce que le pair n'a pas, ou a en moins bonne version : on le lui envoie.
@@ -337,6 +438,14 @@ function Synchro:SurDemande(charge, expediteur)
 			local c = type(id) == "string" and self.commandes[id]
 			if c then self:Envoyer("WHISPER", expediteur, "ORDER", { v = Synchro.PROTOCOLE, commande = c }) end
 		end
+	end
+	if type(charge.px) == "table" then
+		local demandes = {}
+		for i, id in ipairs(charge.px) do
+			if i > MAX_DEMANDES then break end
+			if type(id) == "number" and self.prix[id] then demandes[id] = self.prix[id] end
+		end
+		if next(demandes) then self:EnvoyerPrix("WHISPER", expediteur, "PRIX", demandes) end
 	end
 end
 

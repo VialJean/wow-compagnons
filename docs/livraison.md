@@ -189,11 +189,9 @@ commande. Un composant sans prix n'est jamais ignoré en silence : il est compt�
 1. **Vérifier en jeu** quelle API de l'hôtel des ventes Forever expose : `/cpg observer` relève désormais ces API et
    événements à l'ouverture de l'hôtel des ventes. Si aucune des deux familles ne répond, le relevé automatique est à
    adapter, et la saisie manuelle sert de repli.
-2. **Partager les prix avec la guilde** : n'importe quel membre qui visite l'hôtel des ventes met le prix à jour pour tous.
-   À concevoir sans casser la compatibilité : les prix restent **hors du hash global** (les clients qui ne les connaissent pas
-   ne doivent pas se croire désynchronisés), échangés par des messages dédiés ignorés par les anciennes versions, avec la
-   même règle « le plus récent gagne », des bornes de validation (prix plausibles, horodatage non futur) et un plafond de
-   fréquence. À tester avec le simulateur de synchro.
+2. ~~Partager les prix avec la guilde~~ **Fait** : messages `PRIX` / `PRIX_UPD` hors du hash global, compatibles avec les
+   v2 déjà installées (voir `docs/protocole.md`, « Prix »). Le plus récent gagne, à date égale le moins cher ; validation
+   à la réception ; un prix relevé est diffusé après 5 s de regroupement. Testé avec le simulateur de synchro.
 
 ## 12. Résultats de l'observation en jeu (Forever 1.60.1, build 70862)
 

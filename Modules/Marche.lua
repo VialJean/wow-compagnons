@@ -39,7 +39,10 @@ end
 function Marche:Noter(itemID, unitaire)
 	if not ns.Recettes.objets[itemID] then return false end
 	local change = ns.Prix.enregistrer(ns.db.global.prix, itemID, unitaire, time())
-	if change then Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end
+	if change then
+		Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ")
+		if ns.Reseau and ns.Reseau.moteur then ns.Reseau.moteur:PublierPrix(itemID) end
+	end
 	return change
 end
 

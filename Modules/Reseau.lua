@@ -57,6 +57,8 @@ function Reseau:OnEnable()
 		donnees = ns.Recettes,
 		profils = ns.db.global.guilde,
 		commandes = ns.db.global.commandes,
+		prix = ns.db.global.prix,
+		surPrix = function() Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end,
 		moi = ns.clePersonnage,
 		proprietaire = function(cle) return ns.db.global.personnages[cle] ~= nil end,
 		envoyer = function(canal, cible, genre, charge) self:Envoyer(canal, cible, genre, charge) end,

@@ -66,6 +66,17 @@ et de `PROFILE_REQ`.
 | `PROFILE_UPD` | GUILD | `{ v, profil }` | un personnage vient d'être scanné |
 | `ORDER_NEW` | GUILD | `{ v, commande }` | une commande vient d'être créée |
 | `ORDER_UPD` | GUILD | `{ v, commande }` | une commande vient de changer d'état |
+| `PRIX` | WHISPER | `{ v, prix = { [itemID] = { p, t } } }` | prix transmis pendant une synchro (100 au plus par message) |
+| `PRIX_UPD` | GUILD | `{ v, prix }` | prix qui viennent d'être relevés à l'hôtel des ventes, regroupés sur 5 s |
+
+### Prix (compatible v2)
+
+Les prix restent **hors du hash global** et gardent `v = 2` : `HELLO` porte en plus `hp` (hash des prix), `HASHES.liste.x`
+un résumé `{ [itemID] = { t, p } }` et `PROFILE_REQ.px` la liste des prix demandés. Une ancienne version ignore ces champs
+et les genres `PRIX` et `PRIX_UPD` : elle ne se croit jamais désynchronisée à cause des prix. Un pair n'est comparé sur
+les prix que s'il annonce `hp`/`x`. Règle de fusion : le relevé le plus récent gagne, à date égale le moins cher. Un message
+est validé à la réception : objet de la base, prix de 1 cuivre à 200 000 po, horodatage pas plus de 5 minutes dans le futur,
+200 prix au plus, sinon le lot est ignoré.
 
 ### Déroulement
 

@@ -1,5 +1,6 @@
 -- Tests hors jeu des prix et de l'estimation de coût (Core/Prix.lua). busted tests
 local ns = {}
+assert(loadfile("Core/Profil.lua"))("Compagnons", ns)
 assert(loadfile("Core/Prix.lua"))("Compagnons", ns)
 local Prix = ns.Prix
 
@@ -129,5 +130,44 @@ describe("Prix : montants", function()
 		assert.are.equal(500, Prix.lire("5s"))
 		assert.is_nil(Prix.lire("beaucoup"))
 		assert.is_nil(Prix.lire(nil))
+	end)
+end)
+
+describe("Prix partagés", function()
+	local objets = { objets = { [10] = {}, [11] = {} } }
+
+	it("à date égale, le moins cher gagne, dans les deux sens", function()
+		local a, b = {}, {}
+		Prix.enregistrer(a, 10, 100, 50) ; Prix.enregistrer(a, 10, 80, 50)
+		Prix.enregistrer(b, 10, 80, 50) ; Prix.enregistrer(b, 10, 100, 50)
+		assert.are.equal(80, a[10].p)
+		assert.are.equal(80, b[10].p)
+	end)
+
+	it("valide : garde les objets connus aux valeurs plausibles, refuse le futur et les lots trop gros", function()
+		local v = Prix.valider({ [10] = { p = 5.4, t = 10 }, [99] = { p = 5, t = 10 }, [11] = { p = 5, t = 9999 } }, objets, 100)
+		assert.are.equal(5, v[10].p)
+		assert.is_nil(v[99])
+		assert.is_nil(v[11])
+		local gros = {}
+		for i = 1, Prix.MAX_LOT + 1 do gros[i] = { p = 1, t = 1 } end
+		assert.is_nil(next(Prix.valider(gros, { objets = setmetatable({}, { __index = function() return {} end }) }, 100)))
+		assert.is_nil(next(Prix.valider("x", objets, 100)))
+	end)
+
+	it("fusionne en renvoyant les identifiants modifiés", function()
+		local prix = { [10] = { p = 5, t = 20 } }
+		local changes = Prix.fusionner(prix, { [10] = { p = 9, t = 10 }, [11] = { p = 7, t = 10 } })
+		assert.are.same({ 11 }, changes)
+		assert.are.equal(5, prix[10].p)
+	end)
+
+	it("le hash ne dépend pas de l'ordre et change avec le contenu", function()
+		local a = { [10] = { p = 5, t = 1 }, [11] = { p = 6, t = 2 } }
+		local b = { [11] = { p = 6, t = 2 }, [10] = { p = 5, t = 1 } }
+		assert.are.equal(Prix.hash(a), Prix.hash(b))
+		b[10].p = 6
+		assert.are_not.equal(Prix.hash(a), Prix.hash(b))
+		assert.are.same({ [10] = { 1, 5 }, [11] = { 2, 6 } }, Prix.horodatages(a))
 	end)
 end)
