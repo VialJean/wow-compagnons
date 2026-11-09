@@ -12,6 +12,11 @@ ns.Textes.enUS = {
 	AIDE_JOURNAL = "/cpg log [n]: show the last n lines of the log",
 	AIDE_PERSO = "/cpg char: professions and recipes scanned for this character",
 	AIDE_DIAG = "/cpg diag: client diagnostic (run it with a profession window open)",
+	AIDE_OBSERVER = "/cpg observer [on|off|clear|show [n]]: record trade, mail and crafting events",
+	OBSERVER_ON = "Observation on: do a trade, a mail or a craft, then /reload.",
+	OBSERVER_OFF = "Observation off.",
+	OBSERVER_VIDE = "Record cleared.",
+	OBSERVER_ETAT = "Observation: %s, %d lines recorded.",
 
 	DEBUG_ON = "Debug enabled.",
 	DEBUG_OFF = "Debug disabled.",

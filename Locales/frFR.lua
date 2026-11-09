@@ -11,6 +11,11 @@ ns.Textes.frFR = {
 	AIDE_JOURNAL = "/cpg journal [n] : affiche les n dernières lignes du journal",
 	AIDE_PERSO = "/cpg perso : métiers et recettes scannés pour ce personnage",
 	AIDE_DIAG = "/cpg diag : diagnostic du client (à lancer avec une fenêtre de métier ouverte)",
+	AIDE_OBSERVER = "/cpg observer [on|off|clear|show [n]] : relève les événements d'échange, de courrier et de fabrication",
+	OBSERVER_ON = "Observation activée : fais un échange, un courrier ou une fabrication, puis /reload.",
+	OBSERVER_OFF = "Observation arrêtée.",
+	OBSERVER_VIDE = "Relevé effacé.",
+	OBSERVER_ETAT = "Observation : %s, %d lignes enregistrées.",
 
 	DEBUG_ON = "Debug activé.",
 	DEBUG_OFF = "Debug désactivé.",

@@ -21,6 +21,7 @@ Core\Locales.lua
 Core\Init.lua
 Core\Bitset.lua
 Core\Alias.lua
+Core\Observation.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
@@ -39,6 +40,7 @@ Modules\Scanner.lua
 Modules\Diagnostic.lua
 Modules\Reseau.lua
 Modules\Atelier.lua
+Modules\Observateur.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
