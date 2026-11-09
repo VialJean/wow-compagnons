@@ -7,7 +7,8 @@ ns.L = L
 
 L.AIDE_TITRE = "Compagnons — commandes"
 L.AIDE_OUVRIR = "/cpg : ouvre ou ferme l'atelier de guilde (aussi /cpg recettes)"
-L.AIDE_DEBUG ="/cpg debug : active ou coupe les messages de debug"
+L.AIDE_MINICARTE = "/cpg minicarte : masque ou réaffiche le bouton de la minicarte"
+L.AIDE_DEBUG = "/cpg debug : active ou coupe les messages de debug"
 L.AIDE_JOURNAL = "/cpg journal [n] : affiche les n dernières lignes du journal"
 L.AIDE_PERSO = "/cpg perso : métiers et recettes scannés pour ce personnage"
 L.AIDE_DIAG = "/cpg diag : diagnostic du client (à lancer avec une fenêtre de métier ouverte)"
