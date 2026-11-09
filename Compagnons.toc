@@ -10,7 +10,7 @@
 ## X-Category: Professions
 ## X-License: MIT
 ## X-Website: https://github.com/VialJean/wow-compagnons
-# ## X-Curse-Project-ID: à renseigner après création du projet CurseForge
+## X-Curse-Project-ID: 1793920
 # ## X-Wago-ID: à renseigner après création du projet Wago
 
 embeds.xml
