@@ -53,7 +53,14 @@ function ns.estEnLigne(cle)
 	return cle == ns.clePersonnage()
 end
 
+--- Noms du jeu dans la langue du client, puis libération des tables de noms devenues inutiles.
+local function appliquerNoms()
+	ns.Noms.appliquer(ns.Recettes, ns.NomsDonnees, GetLocale())
+	ns.NomsDonnees = nil
+end
+
 function Compagnons:OnInitialize()
+	appliquerNoms()
 	self.db = LibStub("AceDB-3.0"):New("CompagnonsDB", defauts, true)
 	ns.db = self.db
 	self.db.global.schema = ns.SCHEMA_DB

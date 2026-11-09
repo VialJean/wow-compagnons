@@ -18,6 +18,7 @@ embeds.xml
 Core\Locales.lua
 Core\Init.lua
 Core\Bitset.lua
+Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
 Core\Commandes.lua
@@ -27,6 +28,8 @@ Core\Synchro.lua
 Debug\Log.lua
 
 Data\Recettes.lua
+Data\Noms.enUS.lua
+Data\Noms.frFR.lua
 Data\Desenchantement.lua
 
 Modules\Scanner.lua
