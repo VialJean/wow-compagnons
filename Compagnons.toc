@@ -22,6 +22,7 @@ Core\Init.lua
 Core\Bitset.lua
 Core\Alias.lua
 Core\Observation.lua
+Core\Stock.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
@@ -41,10 +42,12 @@ Modules\Diagnostic.lua
 Modules\Reseau.lua
 Modules\Atelier.lua
 Modules\Observateur.lua
+Modules\Stocks.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
 UI\DialogueCommande.lua
+UI\Courses.lua
 UI\PanneauMetier.lua
 UI\Infobulles.lua
 UI\Alertes.lua

@@ -118,6 +118,12 @@ function Fenetre:CreerCommandes(f)
 		self:ChoisirOnglet(1)
 		if self.recherche then self.recherche:SetFocus() end
 	end)
+
+	local courses = CreateFrame("Button", nil, vue, "UIPanelButtonTemplate")
+	courses:SetSize(150, 24)
+	courses:SetPoint("RIGHT", nouvelle, "LEFT", -6, 0)
+	courses:SetText(L.COURSES_BOUTON)
+	courses:SetScript("OnClick", function() ns.Courses:Basculer() end)
 end
 
 --- Construit (une seule fois) les éléments d'une ligne, puis les remplit.

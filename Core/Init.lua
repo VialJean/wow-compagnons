@@ -20,12 +20,14 @@ local defauts = {
 		guilde = {},      -- copie synchronisée des membres (sprint synchro)
 		commandes = {},   -- (sprint commandes)
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
+		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
 		diag = { sessions = 0 },
 	},
 	profile = {
 		debug = false,
 		minimap = { hide = false },
 		observer = false,
+		stock = { suivi = true },
 		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},
@@ -106,6 +108,10 @@ function Compagnons:Commande(saisie)
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
+	elseif action == "courses" then
+		self:GetModule("Courses"):Basculer()
+	elseif action == "stock" then
+		self:GetModule("Stocks"):Commande(arg)
 	elseif action == "observer" then
 		self:GetModule("Observateur"):Commande(arg, arg2)
 	elseif action == "infobulles" then
@@ -131,6 +137,8 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_SYNC)
 		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_OBSERVER)
+		print("  " .. L.AIDE_COURSES)
+		print("  " .. L.AIDE_STOCK)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)

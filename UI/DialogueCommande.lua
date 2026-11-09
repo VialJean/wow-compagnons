@@ -31,7 +31,9 @@ local function iconeObjet(id)
 	if GetItemIcon then return GetItemIcon(id) end
 end
 
+--- Quantité possédée sur tous mes personnages (le personnage connecté est lu en direct).
 local function stock(id)
+	if ns.Stocks then return ns.Stocks:Total(id) end
 	if C_Item and C_Item.GetItemCount then return C_Item.GetItemCount(id, true) or 0 end
 	if GetItemCount then return GetItemCount(id, true) or 0 end
 	return 0

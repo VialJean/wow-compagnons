@@ -34,7 +34,7 @@ read_globals = {
 	"ITEM_QUALITY_COLORS", "RAID_CLASS_COLORS",
 	"C_Item", "C_Spell", "GetItemIcon", "GetSpellTexture", "GetItemCount",
 	"ProfessionsFrame", "TradeSkillFrame",
-	"GetLocale", "GetTime", "SetItemRef",
+	"GetLocale", "GetTime", "SetItemRef", "ChatFrame_OpenChat",
 	"GetTradePlayerItemInfo", "GetTradeTargetItemInfo", "GetPlayerTradeMoney", "GetTargetTradeMoney",
 	"GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxItem", "GetSendMailItem", "GetSendMailMoney", "ITEM_QUALITY_COLORS", "Enum", "TooltipDataProcessor", "ItemRefTooltip", "ShoppingTooltip1", "IsShiftKeyDown", "IsControlKeyDown",
 	"HandleModifiedItemClick", "ContainerFrameItemButton_OnModifiedClick", "hooksecurefunc",

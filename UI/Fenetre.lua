@@ -109,7 +109,9 @@ local function iconeRecette(spellID, recette)
 	return icone or iconeSort(spellID) or ICONE_INCONNUE
 end
 
+--- Quantité possédée sur tous mes personnages (le personnage connecté est lu en direct).
 local function nombreEnStock(itemID)
+	if ns.Stocks then return ns.Stocks:Total(itemID) end
 	if C_Item and C_Item.GetItemCount then return C_Item.GetItemCount(itemID, true) or 0 end
 	if GetItemCount then return GetItemCount(itemID, true) or 0 end
 	return 0

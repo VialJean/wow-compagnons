@@ -1,6 +1,6 @@
 # Spécification — Livraison et stocks (piste v3)
 
-Statut : proposition, à valider. Complète `docs/protocole.md` (commandes) et `docs/infobulles.md` (infobulles).
+Statut : phases 0 et 1 implémentées (observation, stock par personnage, liste de courses) ; phases 2 à 6 à venir. Complète `docs/protocole.md` (commandes) et `docs/infobulles.md` (infobulles).
 
 ## 1. Objectif
 
