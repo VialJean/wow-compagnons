@@ -27,7 +27,7 @@ local EVENEMENTS = {
 	"CHAT_MSG_SYSTEM", "CHAT_MSG_LOOT", "UI_INFO_MESSAGE", "UI_ERROR_MESSAGE",
 }
 
-local function securise(etape, fn, ...)
+local function securise(_, fn, ...)
 	local ok, a, b = pcall(fn, ...)
 	if not ok then return nil, tostring(a) end
 	return a, b
