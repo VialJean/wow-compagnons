@@ -153,6 +153,25 @@ function Diagnostic:Lancer()
 	api("HandleModifiedItemClick", _G.HandleModifiedItemClick ~= nil)
 	api("ContainerFrameItemButton_OnModifiedClick", _G.ContainerFrameItemButton_OnModifiedClick ~= nil)
 	api("hooksecurefunc", _G.hooksecurefunc ~= nil)
+	-- Désenchantement (docs/desenchantement.md) : informations d'objet lisibles à l'exécution ?
+	api("C_Item.GetItemInfo", C_Item and C_Item.GetItemInfo ~= nil)
+	api("C_Item.GetDetailedItemLevelInfo", C_Item and C_Item.GetDetailedItemLevelInfo ~= nil)
+	api("GetItemInfo (global)", _G.GetItemInfo ~= nil)
+	do
+		-- Épée usée (25) : arme, qualité 1 ; elle donne la forme des valeurs renvoyées.
+		local fn = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+		if fn then
+			local ok, a, b, c, d, e, f, g, h, i, j, k, l = pcall(fn, 25)
+			ligne(INFO, "GetItemInfo(25) -> %s, nom=%s, qualité=%s, niveauObjet=%s, classe=%s, sousClasse=%s",
+				tostring(ok), tostring(a), tostring(c), tostring(d), tostring(l), tostring(k))
+			if type(a) == "table" then
+				ligne(INFO, "GetItemInfo renvoie une table : classID=%s subclassID=%s quality=%s itemLevel=%s",
+					tostring(a.classID), tostring(a.subclassID), tostring(a.quality), tostring(a.itemLevel))
+			end
+			ligne(INFO, "(autres valeurs : %s %s %s %s %s %s)", tostring(b), tostring(e), tostring(f), tostring(g), tostring(h), tostring(i))
+			ligne(INFO, "GetItemInfoInstant(25) -> %s", tostring(select("#", (C_Item and C_Item.GetItemInfoInstant or _G.GetItemInfoInstant or function() end)(25))))
+		end
+	end
 	-- Essai réel : une infobulle d'objet connue (Bandage en lin, 1251) se remplit-elle, et par quelle voie ?
 	if GameTooltip then
 		GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
