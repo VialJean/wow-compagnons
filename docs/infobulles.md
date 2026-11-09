@@ -39,7 +39,19 @@ Ctrl+Maj+clic : commander
 
 ### 2.2 Composant
 
-Affiché si l'objet est un composant d'au moins une recette de la base.
+Affiché si l'objet est un composant d'au moins une recette de la base. L'idée : quand on **ramasse** un objet,
+savoir tout de suite **à qui il est utile**.
+
+```
+Compagnons · composant
+Manque 13 pour ta commande : Huile de mana brillante
+Utile à Brumefer (en ligne) · 4 recettes, dont 1 qui monte encore
+Utile à Jean (toi) · 2 recettes
+Utile à Orvanne · 1 recette
+Maj : détail des recettes
+```
+
+Avec **Maj** enfoncé, les personnes laissent la place aux recettes :
 
 ```
 Compagnons · composant
@@ -48,10 +60,7 @@ Utile pour (14 recettes) :
   Huile de mana brillante · tu la connais, monte encore
   Huile de sorcier brillante · Orvanne
   Huile de bouclier · Brumefer, Orvanne
-… et 11 autres recettes
-Brumefer : 4 recettes dont 1 qui monte encore
-Orvanne : 2 recettes
-Maj : détail des recettes
+  … (jusqu'à 8 recettes, puis « … et N autres recettes »)
 ```
 
 | Ligne | Règle |
@@ -59,10 +68,10 @@ Maj : détail des recettes
 | Titre | « Compagnons · composant » |
 | Manque | pour chaque commande **dont je suis le client**, non finale, où la recette utilise ce composant et où les composants ne sont pas fournis par le crafteur : `manque = besoin − (sac + banque)`, avec `besoin = qté composant × qté commande`. Affichée si `manque > 0`, en orange. Une seule commande détaillée, puis « et N autres commandes » |
 | À fournir | pour chaque commande **que j'ai prise** et dont le crafteur fournit les composants (`mats = crafteur`) : « Requis pour ta commande de X : N ». En bleu |
-| Utile pour | les **trois recettes les plus intéressantes** qui utilisent ce composant, puis « … et N autres recettes ». Classées : 1) que je connais et qui font encore progresser mon métier, 2) que je connais, 3) qu'un autre membre connaît, 4) que personne ne connaît ; à rang égal par niveau puis par nom. Nom coloré par qualité, suivi de « tu la connais, monte encore », « tu la connais », des crafteurs (2 noms puis « et N autres ») ou de « personne » |
-| Crafteurs | pour chaque membre de la guilde qui connaît au moins une recette utilisant ce composant : « Nom : N recettes ». Triés par nombre de recettes décroissant, puis nom. 3 membres au plus, puis « et N autres » |
-| Monte encore | « dont N qui monte encore » : recettes pour lesquelles le niveau du métier du membre est **inférieur au seuil gris** (`seuils[4]`) de la recette, donc qui font encore progresser. Omis si N = 0 |
-| Détail (Maj) | maintenir **Maj** remplace « Utile pour » et la liste de crafteurs par la liste complète des recettes (8 au plus, puis « … »), avec le nom du premier crafteur de chacune |
+| Utile à | une ligne par **membre de la guilde ou personnage à moi** qui connaît au moins une recette utilisant ce composant : « Utile à Nom · N recettes, dont M qui monte encore ». Nom en couleur de classe, « (toi) » pour mes personnages, « (en ligne) » en vert pour les autres membres connectés. 4 au plus, puis « et N autres membres ». Si aucune recette n'est connue : « Utile pour N recettes que personne ne connaît encore » |
+| Tri | d'abord ceux pour qui l'objet **fait encore progresser** (le plus de recettes qui montent), puis le plus de recettes, puis les connectés, puis le nom |
+| Monte encore | « dont N qui monte encore » : recettes pour lesquelles le niveau du métier du membre est **inférieur au seuil gris** (`seuils[4]`) de la recette. Omis si N = 0 |
+| Utile pour (Maj) | les recettes qui utilisent le composant, classées : 1) que je connais et qui font encore progresser mon métier, 2) que je connais, 3) qu'un autre membre connaît, 4) que personne ne connaît ; à rang égal par niveau puis par nom. Nom coloré par qualité, suivi de « tu la connais, monte encore », « tu la connais », des crafteurs (2 noms puis « et N autres ») ou de « personne ». 8 au plus |
 | Indication | « Maj : détail des recettes », gris, tant que Maj n'est pas enfoncé |
 
 Un objet peut être à la fois craftable et composant (ex. une barre de métal) : les deux blocs s'affichent, objet

@@ -22,7 +22,7 @@ ns.Infobulles = Infobulles
 
 local MAX_NOMS = 3
 local MAX_RECETTES_DETAIL = 8
-local MAX_UTILES = 3
+local MAX_MEMBRES = 4
 
 local OR = { 0.88, 0.7, 0.32 }
 local BLANC = { 1, 1, 1 }
@@ -183,7 +183,8 @@ local function crafteursDuComposant(ctx, recettes)
 		for _, c in ipairs(ctx.catalogue:Crafteurs(spellID)) do
 			local e = parCle[c.cle]
 			if not e then
-				e = { cle = c.cle, nom = c.nom, classe = c.classe, n = 0, monte = 0 }
+				e = { cle = c.cle, nom = c.nom, classe = c.classe, n = 0, monte = 0,
+					mien = ctx.miens[c.cle] and true or false, enLigne = ctx.enLigne(c.cle) and true or false }
 				parCle[c.cle] = e
 			end
 			e.n = e.n + 1
@@ -193,11 +194,37 @@ local function crafteursDuComposant(ctx, recettes)
 	local liste = {}
 	for _, e in pairs(parCle) do liste[#liste + 1] = e end
 	table.sort(liste, function(a, b)
+		-- Qui en a le plus l'usage : d'abord ceux pour qui ça fait encore progresser, puis le plus de recettes.
+		if a.monte ~= b.monte then return a.monte > b.monte end
 		if a.n ~= b.n then return a.n > b.n end
+		if a.enLigne ~= b.enLigne then return a.enLigne end
 		if a.nom ~= b.nom then return a.nom < b.nom end
 		return a.cle < b.cle
 	end)
 	return liste
+end
+
+--- « Utile à Brumefer · 4 recettes, dont 1 qui monte encore » : qui, dans la guilde, a l'usage du composant.
+local function lignesUtileA(ctx, recettes)
+	local membres = crafteursDuComposant(ctx, recettes)
+	if #membres == 0 then
+		return { ligne(string.format(ns.L.INFO_UTILE_PERSONNE, #recettes), GRIS) }
+	end
+	local lignes = {}
+	for i = 1, math.min(#membres, MAX_MEMBRES) do
+		local m = membres[i]
+		local r, g, b = ctx.couleurClasse(m.classe)
+		local nom = hex(r, g, b) .. m.nom .. "|r"
+		if m.mien then nom = nom .. " (" .. ns.L.INFO_TOI_COURT .. ")" end
+		if m.enLigne and not m.mien then nom = nom .. " |cff5fd068(" .. ns.L.EN_LIGNE .. ")|r" end
+		local detail = string.format(m.n == 1 and ns.L.INFO_UNE_RECETTE_COURT or ns.L.INFO_N_RECETTES_COURT, m.n)
+		if m.monte > 0 then detail = detail .. ", " .. string.format(ns.L.INFO_MONTE_COURT, m.monte) end
+		lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_UTILE_A, nom, detail), BLANC)
+	end
+	if #membres > MAX_MEMBRES then
+		lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_MEMBRES, #membres - MAX_MEMBRES), GRIS)
+	end
+	return lignes
 end
 
 --- Recettes qui utilisent le composant, classées par intérêt : celles que je connais et qui font encore
@@ -241,17 +268,17 @@ local function precision(e)
 	return texte
 end
 
---- Lignes « Utile pour » : les trois recettes les plus intéressantes, puis le nombre des autres.
+--- Lignes « Utile pour » (avec Maj) : les recettes les plus intéressantes, puis le nombre des autres.
 local function lignesUtilePour(ctx, recettes)
 	local utiles = recettesUtiles(ctx, recettes)
 	local lignes = { ligne(string.format(ns.L.INFO_UTILE_POUR, #utiles), GRIS) }
-	for i = 1, math.min(#utiles, MAX_UTILES) do
+	for i = 1, math.min(#utiles, MAX_RECETTES_DETAIL) do
 		local e = utiles[i]
 		local qr, qg, qb = ctx.couleurQualite(e.recette.qualite)
 		lignes[#lignes + 1] = ligne(string.format("  %s%s|r · %s", hex(qr, qg, qb), e.recette.nom, precision(e)), BLANC)
 	end
-	if #utiles > MAX_UTILES then
-		lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_RECETTES, #utiles - MAX_UTILES), GRIS)
+	if #utiles > MAX_RECETTES_DETAIL then
+		lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_RECETTES, #utiles - MAX_RECETTES_DETAIL), GRIS)
 	end
 	return lignes
 end
@@ -265,32 +292,12 @@ function Infobulles.composant(ctx, itemID)
 	local lignes = { ligne(ns.L.INFO_TITRE_COMPOSANT, OR) }
 	for _, l in ipairs(lignesCommandes(ctx, itemID, recettes)) do lignes[#lignes + 1] = l end
 
-	local crafteurs = crafteursDuComposant(ctx, recettes)
 	if ctx.maj then
-		-- Détail : les recettes, avec le premier crafteur de chacune.
-		local noms = {}
-		for _, spellID in ipairs(recettes) do noms[#noms + 1] = spellID end
-		table.sort(noms, function(a, b) return nomRecette(ctx, a) < nomRecette(ctx, b) end)
-		for i = 1, math.min(#noms, MAX_RECETTES_DETAIL) do
-			local qui = ctx.catalogue:Crafteurs(noms[i])[1]
-			lignes[#lignes + 1] = ligne(string.format("%s · %s", nomRecette(ctx, noms[i]),
-				qui and qui.nom or ns.L.INFO_PERSONNE_COURT), BLANC)
-		end
-		if #noms > MAX_RECETTES_DETAIL then
-			lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_RECETTES, #noms - MAX_RECETTES_DETAIL), GRIS)
-		end
-	else
+		-- Détail : les recettes les plus intéressantes, avec qui les connaît.
 		for _, l in ipairs(lignesUtilePour(ctx, recettes)) do lignes[#lignes + 1] = l end
-		for i = 1, math.min(#crafteurs, MAX_NOMS) do
-			local c = crafteurs[i]
-			local r, g, b = ctx.couleurClasse(c.classe)
-			local texte = string.format(c.n == 1 and ns.L.INFO_UNE_RECETTE or ns.L.INFO_N_RECETTES, hex(r, g, b) .. c.nom .. "|r", c.n)
-			if c.monte > 0 then texte = texte .. " " .. string.format(ns.L.INFO_MONTE, c.monte) end
-			lignes[#lignes + 1] = ligne(texte, BLANC)
-		end
-		if #crafteurs > MAX_NOMS then
-			lignes[#lignes + 1] = ligne(string.format(ns.L.INFO_ET_AUTRES_MEMBRES, #crafteurs - MAX_NOMS), GRIS)
-		end
+	else
+		-- Par défaut : à qui l'objet est utile, pour savoir qui en a l'usage quand on le trouve.
+		for _, l in ipairs(lignesUtileA(ctx, recettes)) do lignes[#lignes + 1] = l end
 		lignes[#lignes + 1] = ligne(ns.L.INFO_MAJ_DETAIL, GRIS)
 	end
 	return lignes

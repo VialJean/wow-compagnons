@@ -182,73 +182,94 @@ describe("Infobulles : composant", function()
 		ctx = contexte(personnages)
 	end)
 
-	it("liste les crafteurs avec leur nombre de recettes, le plus fournis d'abord", function()
+	it("« Utile à » liste qui a l'usage du composant, avec leur nombre de recettes", function()
 		local l = ns.Infobulles.composant(ctx, 3371) -- utilisé par 2329 et 2331
 		local t = textes(l)
 		assert.are.equal("Compagnons · composant", t[1])
 		-- Brumefer (niveau 100) : 2329 gris 95 -> ne monte plus ; 2331 gris 105 -> monte encore
-		assert.is_true(ligneEgale(l, "Brumefer Hautrocher : 2 recettes dont 1 qui monte encore"))
-		assert.is_true(ligneEgale(l, "Jean Vialjean : 1 recette dont 1 qui monte encore"))
+		assert.is_true(ligneEgale(l, "Utile à Brumefer Hautrocher · 2 recettes, dont 1 qui monte encore"))
+		assert.is_true(ligneEgale(l, "Utile à Jean Vialjean (toi) · 1 recette, dont 1 qui monte encore"))
 		assert.are.equal("Maj : détail des recettes", t[#t])
 	end)
 
-	it("ne parle pas de « monte encore » quand plus rien ne fait progresser", function()
+	it("« Utile à » met en premier ceux pour qui l'objet fait encore progresser", function()
+		-- Brumefer a plus de recettes mais plus rien ne monte pour lui ; Jean, lui, progresse encore
 		personnages["Brumefer Hautrocher"].metiers[171].niveau = 300
 		ctx = contexte(personnages)
-		assert.is_true(ligneEgale(ns.Infobulles.composant(ctx, 3371), "Brumefer Hautrocher : 2 recettes"))
+		local t = textes(ns.Infobulles.composant(ctx, 3371))
+		assert.are.equal("Utile à Jean Vialjean (toi) · 1 recette, dont 1 qui monte encore", t[2])
+		assert.are.equal("Utile à Brumefer Hautrocher · 2 recettes", t[3])
 	end)
 
-	it("« Utile pour » classe mes recettes qui montent d'abord, puis celles des autres", function()
-		local t = textes(ns.Infobulles.composant(ctx, 3371))
+	it("« Utile à » signale les membres en ligne, pas moi", function()
+		ctx.enLigne = function() return true end
+		local l = ns.Infobulles.composant(ctx, 3371)
+		assert.is_true(contient(l, "Utile à Brumefer Hautrocher (en ligne) ·"))
+		assert.is_false(contient(l, "(toi) (en ligne)"))
+	end)
+
+	it("« Utile à » se limite à quatre membres puis compte les autres", function()
+		for i = 1, 5 do personnages["Membre" .. i .. " Test"] = perso("Membre" .. i .. " Test", "MAGE", 10, { 2331 }) end
+		ctx = contexte(personnages)
+		local l = ns.Infobulles.composant(ctx, 3371)
+		assert.is_true(ligneEgale(l, "et 3 autres membres"))
+	end)
+
+	it("« Utile à » prévient quand personne ne connaît les recettes qui l'utilisent", function()
+		local l = ns.Infobulles.composant(contexte({}), 3371)
+		assert.is_true(ligneEgale(l, "Utile pour 2 recettes que personne ne connaît encore"))
+	end)
+
+	it("avec Maj, « Utile pour » classe mes recettes qui montent d'abord, puis celles des autres", function()
+		ctx.maj = true
+		local l = ns.Infobulles.composant(ctx, 3371)
+		local t = textes(l)
 		assert.are.equal("Utile pour (2 recettes) :", t[2])
 		assert.are.equal("  Elixir de Force mineure · tu la connais, monte encore", t[3])
 		assert.are.equal("  Potion de mana mineure · Brumefer Hautrocher", t[4])
+		assert.is_false(contient(l, "Maj : détail"))
+		assert.is_false(contient(l, "Utile à"))
 	end)
 
-	it("« Utile pour » distingue une recette que je connais mais qui ne monte plus", function()
+	it("avec Maj, distingue une recette que je connais mais qui ne monte plus", function()
 		personnages["Jean Vialjean"].metiers[171].niveau = 300
 		ctx = contexte(personnages)
+		ctx.maj = true
 		assert.is_true(ligneEgale(ns.Infobulles.composant(ctx, 3371), "  Elixir de Force mineure · tu la connais"))
 	end)
 
-	it("« Utile pour » met les recettes que personne ne connaît en dernier", function()
+	it("avec Maj, met les recettes que personne ne connaît en dernier", function()
+		ctx.maj = true
 		local t = textes(ns.Infobulles.composant(ctx, 2449)) -- utilisé par 2329 (connue) et 3000 (inconnue)
 		assert.are.equal("Utile pour (2 recettes) :", t[2])
 		assert.are.equal("  Elixir de Force mineure · tu la connais, monte encore", t[3])
 		assert.are.equal("  Huile de glace · personne", t[4])
 	end)
 
-	it("« Utile pour » se limite à trois recettes puis compte les autres", function()
-		for i = 1, 4 do
+	it("avec Maj, se limite à huit recettes puis compte les autres", function()
+		for i = 1, 8 do
 			local id = 6000 + i
 			donnees.recettes[id] = { metier = 171, indice = 5 + i, niveau = 10 + i, nom = "Extra " .. i, objet = 0, qte = 0,
 				qualite = 1, seuils = { 1, 2, 3, 4 }, composants = { { 3371, 1 } } }
 			donnees.metiers[171].ordre[5 + i] = id
 		end
 		ctx = contexte(personnages)
+		ctx.maj = true
 		local l = ns.Infobulles.composant(ctx, 3371)
-		for i = 1, 4 do donnees.recettes[6000 + i], donnees.metiers[171].ordre[5 + i] = nil, nil end
-		assert.is_true(ligneEgale(l, "Utile pour (6 recettes) :"))
-		assert.is_true(ligneEgale(l, "… et 3 autres recettes"))
+		for i = 1, 8 do donnees.recettes[6000 + i], donnees.metiers[171].ordre[5 + i] = nil, nil end
+		assert.is_true(ligneEgale(l, "Utile pour (10 recettes) :"))
+		assert.is_true(ligneEgale(l, "… et 2 autres recettes"))
 	end)
 
-	it("« Utile pour » abrège la liste de crafteurs d'une recette (2 noms puis « et N autres »)", function()
+	it("avec Maj, abrège la liste de crafteurs d'une recette (2 noms puis « et N autres »)", function()
 		for i = 1, 4 do personnages["Membre" .. i .. " Test"] = perso("Membre" .. i .. " Test", "MAGE", 10, { 2331 }) end
 		ctx = contexte(personnages)
-		local l = ns.Infobulles.composant(ctx, 3371)
+		ctx.maj = true
 		local trouve = false
-		for _, t in ipairs(textes(l)) do
+		for _, t in ipairs(textes(ns.Infobulles.composant(ctx, 3371))) do
 			if t:find("Potion de mana mineure ·", 1, true) and t:find("et 3 autres", 1, true) then trouve = true end
 		end
 		assert.is_true(trouve)
-	end)
-
-	it("avec Maj, détaille les recettes à la place des crafteurs", function()
-		ctx.maj = true
-		local t = textes(ns.Infobulles.composant(ctx, 3371))
-		assert.are.equal("Elixir de Force mineure · Brumefer Hautrocher", t[2])
-		assert.are.equal("Potion de mana mineure · Brumefer Hautrocher", t[3])
-		assert.is_false(contient(ns.Infobulles.composant(ctx, 3371), "Maj : détail"))
 	end)
 
 	it("calcule ce qu'il me manque pour mes commandes, sacs et banque compris", function()
