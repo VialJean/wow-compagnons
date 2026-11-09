@@ -132,3 +132,40 @@ describe("Marche : événements", function()
 		assert.is_true(true)
 	end)
 end)
+
+describe("Marche : marchand", function()
+	local function marchand(articles)
+		rawset(_G, "GetMerchantNumItems", function() return #articles end)
+		rawset(_G, "GetMerchantItemLink", function(i) return "|Hitem:" .. articles[i].id .. "::|h[x]|h" end)
+		rawset(_G, "GetMerchantItemInfo", function(i)
+			local a = articles[i]
+			return "x", 1, a.prix, a.quantite or 1, a.stock or -1, true, a.cout
+		end)
+	end
+	after_each(function()
+		for _, nom in ipairs({ "GetMerchantNumItems", "GetMerchantItemLink", "GetMerchantItemInfo" }) do rawset(_G, nom, nil) end
+	end)
+
+	it("retient le prix unitaire des composants vendus sans limite, marqués vendeur", function()
+		local ns, module = monter()
+		marchand({ { id = 3371, prix = 50, quantite = 5 } })
+		module:SurMarchand()
+		assert.are.equal(10, ns.db.global.prix[3371].p)
+		assert.is_true(ns.db.global.prix[3371].v)
+	end)
+
+	it("ignore le stock limité, les prix en jetons, les objets hors base", function()
+		local ns, module = monter()
+		marchand({ { id = 3371, prix = 50, stock = 3 }, { id = 2449, prix = 50, cout = true }, { id = 99999, prix = 5 } })
+		module:SurMarchand()
+		assert.is_nil(next(ns.db.global.prix))
+	end)
+
+	it("une API absente ou qui échoue ne casse rien", function()
+		local ns, module = monter()
+		module:SurMarchand()
+		rawset(_G, "GetMerchantNumItems", function() error("boum") end)
+		module:SurMarchand()
+		assert.is_nil(next(ns.db.global.prix))
+	end)
+end)

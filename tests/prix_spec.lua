@@ -168,6 +168,45 @@ describe("Prix partagés", function()
 		assert.are.equal(Prix.hash(a), Prix.hash(b))
 		b[10].p = 6
 		assert.are_not.equal(Prix.hash(a), Prix.hash(b))
-		assert.are.same({ [10] = { 1, 5 }, [11] = { 2, 6 } }, Prix.horodatages(a))
+		assert.are.same({ [10] = { 1, 5, 0 }, [11] = { 2, 6, 0 } }, Prix.horodatages(a))
+	end)
+end)
+
+describe("Prix de vendeur", function()
+	it("un prix de vendeur l'emporte sur l'hôtel des ventes, même plus ancien, et ne se fait pas écraser", function()
+		local prix = {}
+		Prix.enregistrer(prix, 10, 50, 900)
+		assert.is_true(Prix.enregistrer(prix, 10, 20, 100, true))
+		assert.are.equal(20, prix[10].p)
+		assert.is_true(prix[10].v)
+		assert.is_false(Prix.enregistrer(prix, 10, 5, 2000))   -- un relevé de l'hôtel des ventes plus récent ne gagne pas
+		assert.are.equal(20, prix[10].p)
+	end)
+
+	it("entre deux prix de vendeur, le plus haut gagne (la réputation ne fait que baisser le prix)", function()
+		local a, b = {}, {}
+		Prix.enregistrer(a, 10, 80, 1, true) ; Prix.enregistrer(a, 10, 100, 2, true)
+		Prix.enregistrer(b, 10, 100, 2, true) ; Prix.enregistrer(b, 10, 80, 1, true)
+		assert.are.equal(100, a[10].p)
+		assert.are.equal(100, b[10].p)
+		assert.is_false(Prix.enregistrer(a, 10, 100, 9, true))  -- même prix : rien ne change
+	end)
+
+	it("le drapeau survit à la validation, au hash et au résumé; un vendeur n'est jamais « ancien »", function()
+		local v = Prix.valider({ [10] = { p = 7, t = 5, v = true }, [11] = { p = 7, t = 5, v = "oui" } },
+			{ objets = { [10] = {}, [11] = {} } }, 100)
+		assert.is_true(v[10].v)
+		assert.is_nil(v[11].v)
+		assert.are_not.equal(Prix.hash({ [10] = { p = 7, t = 5, v = true } }), Prix.hash({ [10] = { p = 7, t = 5 } }))
+		assert.are.same({ [10] = { 5, 7, 1 } }, Prix.horodatages({ [10] = { p = 7, t = 5, v = true } }))
+		assert.is_false(Prix.ancien(1, 10 ^ 9, true))
+		assert.is_true(Prix.ancien(1, 10 ^ 9, false))
+	end)
+
+	it("compare un résumé distant, y compris sans drapeau (ancien format)", function()
+		assert.is_nil(Prix.depuisResume("x"))
+		local d = Prix.depuisResume({ 5, 7 })
+		assert.is_nil(d.v)
+		assert.is_true(Prix.bat({ p = 1, t = 9, v = true }, Prix.depuisResume({ 99, 1, 0 })))
 	end)
 end)

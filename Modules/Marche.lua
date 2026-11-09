@@ -2,6 +2,9 @@
 -- joueur affiche en cherchant lui-même (docs/livraison.md). Deux familles d'API sont gérées, avec des garde-fous :
 --   - ancienne : AUCTION_ITEM_LIST_UPDATE, GetNumAuctionItems / GetAuctionItemInfo / GetAuctionItemLink ;
 --   - moderne : COMMODITY_SEARCH_RESULTS_UPDATED, C_AuctionHouse.GetCommoditySearchResultInfo.
+-- Chez un marchand : le prix des composants qu'il vend en quantité illimitée et contre de l'or seulement (un prix de vendeur
+-- l'emporte sur l'hôtel des ventes : c'est le coût réel, voir Core/Prix.lua). Le prix affiché tient compte de la réputation ;
+-- le prix de base, plus haut, l'emporte à la synchro.
 -- Seul le prix d'un composant de la base est mémorisé : le plus bas prix à achat immédiat vu, par unité.
 -- Message émis : COMPAGNONS_PRIX_MAJ
 -- /cpg prix [<id ou lien> <montant>|clear]
@@ -26,6 +29,8 @@ function Marche:OnEnable()
 	for evenement, methode in pairs({
 		AUCTION_ITEM_LIST_UPDATE = "SurListe",
 		COMMODITY_SEARCH_RESULTS_UPDATED = "SurMarchandise",
+		MERCHANT_SHOW = "SurMarchand",
+		MERCHANT_UPDATE = "SurMarchand",
 	}) do
 		pcall(self.RegisterEvent, self, evenement, methode)
 	end
@@ -36,9 +41,9 @@ local function idDepuisLien(lien)
 end
 
 --- Enregistre un prix pour un composant de la base. Renvoie vrai s'il a changé.
-function Marche:Noter(itemID, unitaire)
+function Marche:Noter(itemID, unitaire, pnj)
 	if not ns.Recettes.objets[itemID] then return false end
-	local change = ns.Prix.enregistrer(ns.db.global.prix, itemID, unitaire, time())
+	local change = ns.Prix.enregistrer(ns.db.global.prix, itemID, unitaire, time(), pnj)
 	if change then
 		Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ")
 		if ns.Reseau and ns.Reseau.moteur then ns.Reseau.moteur:PublierPrix(itemID) end
@@ -78,6 +83,21 @@ function Marche:SurMarchandise(_, itemID)
 		if not api or not api.GetNumCommoditySearchResults or (api.GetNumCommoditySearchResults(itemID) or 0) < 1 then return end
 		local info = api.GetCommoditySearchResultInfo(itemID, 1)
 		if info and info.unitPrice then self:Noter(itemID, info.unitPrice) end
+	end)
+end
+
+--- Marchand : les composants vendus sans limite de stock, contre de l'or seulement.
+function Marche:SurMarchand()
+	securise("marchand", function()
+		local nombre = _G.GetMerchantNumItems and _G.GetMerchantNumItems() or 0
+		for i = 1, nombre do
+			local _, _, prix, quantite, disponible, _, cout = _G.GetMerchantItemInfo(i)
+			local itemID = idDepuisLien(_G.GetMerchantItemLink and _G.GetMerchantItemLink(i))
+			if itemID and ns.Recettes.objets[itemID] and disponible == -1 and not cout
+				and type(prix) == "number" and prix > 0 and type(quantite) == "number" and quantite >= 1 then
+				self:Noter(itemID, prix / quantite, true)
+			end
+		end
 	end)
 end
 

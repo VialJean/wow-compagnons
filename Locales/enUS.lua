@@ -53,6 +53,7 @@ ns.Textes.enUS = {
 	PRIX_COMPOSANTS = "Reagents ≈ %s",
 	PRIX_CRAFTEUR = "Reagents ≈ %s (paid by the crafter)",
 	PRIX_AUCUN = "Reagent prices unknown: open the auction house to record them.",
+	PRIX_PNJ = "vendor price",
 	PRIX_ANCIEN = "old price",
 	PRIX_UNITAIRE = "Unit price: %s",
 	PRIX_APPROX = "≈ %s",

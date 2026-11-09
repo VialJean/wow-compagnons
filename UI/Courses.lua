@@ -138,10 +138,10 @@ function Courses:Infobulle(ligne)
 	GameTooltip:SetOwner(ligne, "ANCHOR_RIGHT")
 	GameTooltip:SetText(e.nom, 1, 1, 1)
 	GameTooltip:AddLine(string.format(L.COURSES_COMMANDES_LIGNE, e.commandes), 0.66, 0.61, 0.53)
-	local unitaire, releve = ns.Marche:Pour(e.itemID)
+	local unitaire, releve, pnj = ns.Marche:Pour(e.itemID)
 	if unitaire then
-		local age = " |cffa89c86(" .. ns.Atelier.Age(releve) .. ")|r"
-		if ns.Prix.ancien(releve, time()) then age = age .. " |cffe8a94f" .. L.PRIX_ANCIEN .. "|r" end
+		local age = pnj and (" |cffa89c86(" .. L.PRIX_PNJ .. ")|r") or (" |cffa89c86(" .. ns.Atelier.Age(releve) .. ")|r")
+		if ns.Prix.ancien(releve, time(), pnj) then age = age .. " |cffe8a94f" .. L.PRIX_ANCIEN .. "|r" end
 		GameTooltip:AddLine(string.format(L.PRIX_UNITAIRE, ns.Marche.Argent(unitaire)) .. age, 0.88, 0.7, 0.32)
 	end
 	GameTooltip:AddLine(" ")

@@ -17,7 +17,7 @@
 -- Prix des composants (docs/livraison.md, §11), hors du hash global pour rester compatible avec les versions qui ne les
 -- connaissent pas : les champs `hp` et `x` et les genres PRIX et PRIX_UPD sont simplement ignorés par celles-ci.
 --   HELLO        ... hp = hash des prix           annonce aussi le hash des prix
---   HASHES       ... liste.x = { [itemID] = {t,p} }  date et prix de nos relevés (présent seulement si on gère les prix)
+--   HASHES       ... liste.x = { [itemID] = {t,p,v} }  date, prix et origine (v=1 : vendeur) de nos relevés (présent seulement si on gère les prix)
 --   PROFILE_REQ  ... px = { itemID, ... }          prix demandés
 --   PRIX         WHISPER  { v, prix = { [itemID] = { p, t } } }   prix transmis pendant une synchro (100 au plus)
 --   PRIX_UPD     GUILD    { v, prix = { ... } }    prix qui viennent d'être relevés (regroupés sur 5 s)
@@ -148,7 +148,7 @@ function Synchro:EnvoyerPrix(canal, cible, genre, prix)
 		local lot = {}
 		for i = debut, math.min(debut + PRIX_PAR_MESSAGE - 1, #ids) do
 			local e = prix[ids[i]]
-			lot[ids[i]] = { p = e.p, t = e.t }
+			lot[ids[i]] = { p = e.p, t = e.t, v = e.v }
 		end
 		self:Envoyer(canal, cible, genre, { v = Synchro.PROTOCOLE, prix = lot })
 	end
@@ -381,20 +381,15 @@ function Synchro:SurHashes(charge, expediteur)
 	local distantsX = type(liste.x) == "table" and liste.x or nil
 	if distantsX then
 		for id, r in pairs(distantsX) do
-			if type(id) == "number" and type(r) == "table" and nombre(r[1]) and nombre(r[2])
-				and self.donnees.objets and self.donnees.objets[id] then
-				local local_ = self.prix[id]
-				if (not local_ or not ns.Prix.meilleur(local_, r)) and (local_ == nil or local_.t ~= r[1] or r[2] < local_.p)
-					and #demandeX < MAX_DEMANDES then
-					demandeX[#demandeX + 1] = id
-				end
+			local distant = type(id) == "number" and self.donnees.objets and self.donnees.objets[id] and ns.Prix.depuisResume(r)
+			if distant and ns.Prix.bat(distant, self.prix[id]) and #demandeX < MAX_DEMANDES then
+				demandeX[#demandeX + 1] = id
 			end
 		end
 		local pousser = {}
 		for id, e in pairs(self.prix) do
-			if ns.Prix.meilleur(e, distantsX[id]) and not (type(distantsX[id]) == "table" and distantsX[id][1] == e.t and distantsX[id][2] == e.p) then
-				pousser[id] = e
-			end
+			local distant = ns.Prix.depuisResume(distantsX[id])
+			if not distant or ns.Prix.bat(e, distant) then pousser[id] = e end
 		end
 		if next(pousser) then self:EnvoyerPrix("WHISPER", expediteur, "PRIX", pousser) end
 	end

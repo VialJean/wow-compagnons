@@ -189,7 +189,7 @@ commande. Un composant sans prix n'est jamais ignoré en silence : il est compt�
 1. **Vérifier en jeu** quelle API de l'hôtel des ventes Forever expose : `/cpg observer` relève désormais ces API et
    événements à l'ouverture de l'hôtel des ventes. Si aucune des deux familles ne répond, le relevé automatique est à
    adapter, et la saisie manuelle sert de repli.
-2. ~~Partager les prix avec la guilde~~ **Fait** : messages `PRIX` / `PRIX_UPD` hors du hash global, compatibles avec les
+2. ~~Partager les prix avec la guilde~~ **Fait** (prix des vendeurs PNJ compris, voir ci-dessous) : messages `PRIX` / `PRIX_UPD` hors du hash global, compatibles avec les
    v2 déjà installées (voir `docs/protocole.md`, « Prix »). Le plus récent gagne, à date égale le moins cher ; validation
    à la réception ; un prix relevé est diffusé après 5 s de regroupement. Testé avec le simulateur de synchro.
 
@@ -275,3 +275,17 @@ déjà vide (message 472 « Message envoyé. ») ; retirer une pièce jointe vid
   des API de Forever (`C_Container`, `ClickTradeButton`, `ClickSendMailItemButton`) et reste à valider en jeu ; une erreur est
   journalisée (`/cpg journal`) et le curseur vidé.
 - **Limite** : seuls les sacs du personnage connecté sont utilisés (pas ses autres personnages ni la banque).
+
+### Prix des vendeurs PNJ
+
+Certains composants ne s'achètent qu'chez un marchand : l'hôtel des ventes ne donne alors pas le coût réel. Le client
+n'indique pas qui vend quoi, l'addon le relève donc en jeu : à l'ouverture d'un marchand (`MERCHANT_SHOW`, `MERCHANT_UPDATE`),
+chaque composant de la base vendu **sans limite de stock et contre de l'or seulement** est enregistré au prix unitaire,
+marqué « vendeur » (`v = true`).
+
+- **Priorité** (`Prix.bat`) : un prix de vendeur l'emporte sur l'hôtel des ventes (coût réel, stock illimité) ; entre deux
+  prix de vendeur, le plus haut (le prix de base : la réputation ne fait que baisser le prix) ; entre deux relevés de
+  l'hôtel des ventes, le plus récent, puis le moins cher. Ordre total, donc la guilde converge.
+- **Partage** : le drapeau voyage dans `PRIX`/`PRIX_UPD` (`v`) et dans le résumé `x` (3e case). Une version qui ne le
+  connaît pas l'ignore. Ces prix ne sont jamais signalés comme anciens ; l'infobulle de la liste de courses indique « prix PNJ ».
+- **À valider en jeu** : `GetMerchantItemInfo` / `GetMerchantItemLink` sur Forever.

@@ -52,6 +52,7 @@ ns.Textes.frFR = {
 	PRIX_COMPOSANTS = "Composants ≈ %s",
 	PRIX_CRAFTEUR = "Composants ≈ %s (à la charge du crafteur)",
 	PRIX_AUCUN = "Prix des composants inconnus : ouvre l'hôtel des ventes pour les relever.",
+	PRIX_PNJ = "prix PNJ",
 	PRIX_ANCIEN = "prix ancien",
 	PRIX_UNITAIRE = "Prix unitaire : %s",
 	PRIX_APPROX = "≈ %s",

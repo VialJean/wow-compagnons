@@ -1,5 +1,5 @@
 -- Prix des composants (hôtel des ventes) et estimation de coût. Lua pur, sans API du jeu.
--- Le module Modules/Prix.lua relève les prix à l'hôtel des ventes ; ici : stockage, validation, coûts.
+-- Le module Modules/Marche.lua relève les prix à l'hôtel des ventes ; ici : stockage, validation, coûts.
 --
 --   prix[itemID] = { p = prix unitaire en cuivre, t = horodatage du relevé }
 local _, ns = ...
@@ -10,16 +10,27 @@ ns.Prix = Prix
 local MAX_PRIX = 2000000000   -- 200 000 pièces d'or : au-delà, valeur aberrante
 Prix.ANCIEN = 3 * 24 * 3600   -- un prix de plus de trois jours est signalé comme ancien
 
---- Enregistre un prix unitaire (en cuivre) : le plus récent gagne. Renvoie vrai si le prix a changé.
-function Prix.enregistrer(prix, itemID, unitaire, maintenant)
+--- `a` l'emporte-t-il sur `b` ? Entrées { p, t, v } (v : prix d'un vendeur PNJ).
+-- Un prix de vendeur l'emporte sur un relevé de l'hôtel des ventes : c'est le coût réel, sans limite de stock. Entre deux
+-- prix de vendeur, le plus haut (le prix de base : une réputation ne fait que baisser le prix). Entre deux relevés de l'hôtel
+-- des ventes, le plus récent, et à date égale le moins cher. Ordre total : tous les clients tranchent pareil.
+function Prix.bat(a, b)
+	if not b then return true end
+	local va, vb = a.v == true, b.v == true
+	if va ~= vb then return va end
+	if va then return a.p > b.p end
+	if a.t ~= b.t then return a.t > b.t end
+	return a.p < b.p
+end
+
+--- Enregistre un prix unitaire (en cuivre). `pnj` : prix d'un vendeur. Renvoie vrai si le prix a changé.
+function Prix.enregistrer(prix, itemID, unitaire, maintenant, pnj)
 	if type(itemID) ~= "number" or type(unitaire) ~= "number" or unitaire ~= unitaire then return false end
 	unitaire = math.floor(unitaire + 0.5)
 	if unitaire < 1 or unitaire > MAX_PRIX then return false end
-	local actuel = prix[itemID]
-	if actuel and actuel.t > maintenant then return false end -- on ne remplace pas par un relevé plus ancien
-	-- Deux relevés de même date : on garde le moins cher, pour que tous les clients tranchent pareil.
-	if actuel and actuel.t == maintenant and unitaire >= actuel.p then return false end
-	prix[itemID] = { p = unitaire, t = maintenant }
+	local nouveau = { p = unitaire, t = maintenant, v = pnj and true or nil }
+	if not Prix.bat(nouveau, prix[itemID]) then return false end
+	prix[itemID] = nouveau
 	return true
 end
 
@@ -40,7 +51,7 @@ function Prix.valider(brut, donnees, maintenant)
 		if type(itemID) == "number" and donnees.objets and donnees.objets[itemID] and type(e) == "table"
 			and type(e.p) == "number" and type(e.t) == "number" and e.p == e.p and e.t == e.t
 			and e.p >= 1 and e.p <= MAX_PRIX and e.t >= 0 and e.t <= maintenant + Prix.TOLERANCE_FUTUR then
-			valides[itemID] = { p = math.floor(e.p + 0.5), t = e.t }
+			valides[itemID] = { p = math.floor(e.p + 0.5), t = e.t, v = e.v == true and true or nil }
 		end
 	end
 	return valides
@@ -50,7 +61,7 @@ end
 function Prix.fusionner(prix, valides)
 	local changes = {}
 	for itemID, e in pairs(valides) do
-		if Prix.enregistrer(prix, itemID, e.p, e.t) then changes[#changes + 1] = itemID end
+		if Prix.enregistrer(prix, itemID, e.p, e.t, e.v) then changes[#changes + 1] = itemID end
 	end
 	table.sort(changes)
 	return changes
@@ -62,23 +73,22 @@ function Prix.hash(prix)
 	for id in pairs(prix) do ids[#ids + 1] = id end
 	table.sort(ids)
 	local morceaux = {}
-	for i, id in ipairs(ids) do morceaux[i] = id .. ":" .. prix[id].p .. ":" .. prix[id].t end
+	for i, id in ipairs(ids) do morceaux[i] = id .. ":" .. prix[id].p .. ":" .. prix[id].t .. (prix[id].v and ":v" or "") end
 	return ns.Profil.adler(table.concat(morceaux, ";"))
 end
 
---- Résumé { [itemID] = { t, p } } : ce qu'on annonce à un pair pour savoir qui a le prix le plus récent (le prix
--- départage deux relevés de même date).
+--- Résumé { [itemID] = { t, p, v } } (v : 1 pour un prix de vendeur) : ce qu'on annonce à un pair pour savoir qui a le
+-- meilleur prix. Les deux premières cases suffisent à un client qui ne connaît pas les prix de vendeur.
 function Prix.horodatages(prix)
 	local t = {}
-	for id, e in pairs(prix) do t[id] = { e.t, e.p } end
+	for id, e in pairs(prix) do t[id] = { e.t, e.p, e.v and 1 or 0 } end
 	return t
 end
 
---- Le relevé local `e` l'emporte-t-il sur le résumé distant { t, p } ? (même règle que `enregistrer`)
-function Prix.meilleur(e, distant)
-	if type(distant) ~= "table" or type(distant[1]) ~= "number" or type(distant[2]) ~= "number" then return true end
-	if e.t ~= distant[1] then return e.t > distant[1] end
-	return e.p < distant[2]
+--- Convertit un résumé distant { t, p, v } en entrée comparable, ou nil s'il est invalide.
+function Prix.depuisResume(r)
+	if type(r) ~= "table" or type(r[1]) ~= "number" or type(r[2]) ~= "number" then return nil end
+	return { t = r[1], p = r[2], v = r[3] == 1 or nil }
 end
 
 --- Le prix unitaire le plus bas d'une liste de lots { { quantite, achat }, ... } (achat immédiat, en cuivre pour
@@ -98,12 +108,12 @@ end
 --- Prix unitaire connu, ou nil. Deuxième valeur : horodatage du relevé.
 function Prix.unitaire(prix, itemID)
 	local e = prix[itemID]
-	if e then return e.p, e.t end
+	if e then return e.p, e.t, e.v == true end
 	return nil
 end
 
-function Prix.ancien(t, maintenant)
-	return t ~= nil and maintenant - t > Prix.ANCIEN
+function Prix.ancien(t, maintenant, pnj)
+	return not pnj and t ~= nil and maintenant - t > Prix.ANCIEN
 end
 
 --- Coût d'une liste de besoins { { itemID, quantite }, ... }.
@@ -111,12 +121,12 @@ end
 function Prix.cout(prix, besoins, maintenant)
 	local r = { total = 0, inconnus = 0, anciens = 0, plusAncien = nil }
 	for _, b in ipairs(besoins) do
-		local p, t = Prix.unitaire(prix, b[1])
+		local p, t, pnj = Prix.unitaire(prix, b[1])
 		if b[2] > 0 then
 			if p then
 				r.total = r.total + p * b[2]
-				if Prix.ancien(t, maintenant) then r.anciens = r.anciens + 1 end
-				if not r.plusAncien or t < r.plusAncien then r.plusAncien = t end
+				if Prix.ancien(t, maintenant, pnj) then r.anciens = r.anciens + 1 end
+				if not pnj and (not r.plusAncien or t < r.plusAncien) then r.plusAncien = t end
 			else
 				r.inconnus = r.inconnus + 1
 			end
