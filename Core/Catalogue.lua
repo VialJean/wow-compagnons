@@ -265,6 +265,58 @@ function Catalogue:Enchanteurs()
 	return liste
 end
 
+--- Les membres qui ont l'addon et leurs métiers : mes personnages et les profils reçus de la guilde.
+-- { { cle, nom, classe, moi, metiers = { { id, nom, niveau, max, recettes }, ... } }, ... }, triée par nom ;
+-- les métiers de chacun sont triés par nom. Un personnage sans métier est omis.
+function Catalogue:Membres()
+	local liste = {}
+	local d = self.donnees
+	local propres = self.personnages or {}
+
+	local function ajouter(membre)
+		table.sort(membre.metiers, function(a, b)
+			local na, nb = normaliser(a.nom), normaliser(b.nom)
+			if na ~= nb then return na < nb end
+			return (a.id or 0) < (b.id or 0)
+		end)
+		if #membre.metiers > 0 then liste[#liste + 1] = membre end
+	end
+
+	for cle, perso in pairs(propres) do
+		local m = { cle = cle, nom = perso.nom or cle, classe = perso.classe, moi = true, metiers = {} }
+		for cleMetier, metier in pairs(perso.metiers or {}) do
+			local id = ns.Profil.idMetier(d, metier, cleMetier)
+			local nombre = 0
+			for _, spellID in ipairs(metier.recettes or {}) do
+				local r = d.recettes[spellID]
+				if r and (id == nil or r.metier == id) then nombre = nombre + 1 end
+			end
+			m.metiers[#m.metiers + 1] = { id = id, nom = id and nomMetier(d, id) or metier.nom or tostring(cleMetier),
+				niveau = metier.niveau or 0, max = metier.max or 0, recettes = nombre }
+		end
+		ajouter(m)
+	end
+
+	for cle, profil in pairs(self.guilde or {}) do
+		if not propres[cle] then
+			local m = { cle = cle, nom = profil.nom or cle, classe = profil.classe, moi = false, metiers = {} }
+			local connues = ns.Profil.recettes(profil, d)
+			for id, metier in pairs(profil.metiers or {}) do
+				m.metiers[#m.metiers + 1] = { id = id, nom = nomMetier(d, id), niveau = metier.niveau or 0,
+					max = metier.max or 0, recettes = #(connues[id] or {}) }
+			end
+			ajouter(m)
+		end
+	end
+
+	table.sort(liste, function(a, b)
+		local na, nb = normaliser(a.nom), normaliser(b.nom)
+		if na ~= nb then return na < nb end
+		return a.cle < b.cle
+	end)
+	return liste
+end
+
 --- Quantité de `itemID` consommée par la recette (0 si elle ne l'utilise pas).
 function Catalogue:QuantiteComposant(spellID, itemID)
 	local r = self.donnees.recettes[spellID]

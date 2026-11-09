@@ -159,7 +159,10 @@ function Fenetre:OnEnable()
 end
 
 function Fenetre:SurMiseAJour()
-	if self.cadre and self.cadre:IsShown() then self:Rafraichir() end
+	if self.cadre and self.cadre:IsShown() then
+		self:Rafraichir()
+		self:RafraichirMembres()
+	end
 end
 
 function Fenetre:Basculer()
@@ -208,6 +211,7 @@ function Fenetre:Creer()
 	securise("détail", self.CreerDetail, self, f)
 	securise("liste des recettes", self.CreerRecettes, self, f)
 	securise("tableau des commandes", self.CreerCommandes, self, f)
+	securise("liste des membres", self.CreerMembres, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
 
 	f.pied = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -460,7 +464,7 @@ end
 
 function Fenetre:CreerOnglets(f)
 	self.onglets = {}
-	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES }
+	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES }
 	for i, nom in ipairs(noms) do
 		local onglet = CreateFrame("Button", "CompagnonsFrameTab" .. i, f, "PanelTabButtonTemplate")
 		onglet:SetID(i)
@@ -492,8 +496,15 @@ function Fenetre:ChoisirOnglet(numero)
 		region:SetShown(recettes)
 	end
 	self.cadre.nbResultats:SetShown(recettes)
-	if self.vueCommandes then self.vueCommandes:SetShown(not recettes) end
-	if recettes then self:Rafraichir() else self:RafraichirCommandes() end
+	if self.vueCommandes then self.vueCommandes:SetShown(numero == 2) end
+	if self.vueMembres then self.vueMembres:SetShown(numero == 3) end
+	if numero == 1 then
+		self:Rafraichir()
+	elseif numero == 2 then
+		self:RafraichirCommandes()
+	else
+		self:RafraichirMembres()
+	end
 end
 
 --- Libellé de l'onglet Commandes, avec le nombre de commandes que l'on peut remplir.

@@ -20,6 +20,7 @@ Find out who in your guild can craft what, without asking in chat.
 - **Crafting orders:** order a recipe from the browser (quantity, a specific crafter or anyone, who supplies the reagents, a note). Crafters see the orders they can fill and take them, mark materials received, finish or release them. Only the client can cancel and only the assigned crafter can advance an order. Alerts never appear in combat.
 - **Delivery without leaving the game:** craft progress is tracked ("3/5 crafted"); when a trade or a mail completes, the addon recognises the materials or the crafted item and offers to advance the order. A hand-over assistant places the items, one click each: you always accept the trade and send the mail yourself.
 - **Shopping list and prices** (`/cpg shopping`): every reagent your open orders need, the stock of all your characters, and the cost of what is missing, from auction house prices recorded in game and shared with the guild.
+- **Members tab:** who in the guild runs the addon, with their professions, skill levels and known recipes; filter by profession or online status.
 - **Tooltips:** "Useful to <character>" on reagents, disenchant results, Ctrl+Shift+click to order a recipe.
 - **Automatic sync:** open a profession once and your known recipes are shared with guildmates who also run the addon. It uses the addon channel, so there is no website, account or server.
 

@@ -164,4 +164,33 @@ describe("Catalogue", function()
 		assert.are.same({}, c:Chercher({ inconnue = true }))
 		personnages["Jean-Royaume"].metiers[171].recettes[4] = nil
 	end)
+
+	it("liste les membres qui ont l'addon avec leurs métiers, les miens compris, sans doublon", function()
+		local _, ns = charger()
+		local guilde = {
+			["Wilgar Rolpik"] = { cle = "Wilgar Rolpik", nom = "Wilgar Rolpik", classe = "MAGE", maj = 5, hash = 1,
+				metiers = {
+					[333] = { niveau = 12, max = 75, bits = ns.Bitset.encoder({ [1] = true }, 1) },
+					[171] = { niveau = 30, max = 75, bits = ns.Bitset.encoder({ [3] = true }, 3) },
+				} },
+			["Jean-Royaume"] = { cle = "Jean-Royaume", nom = "Jean", maj = 1, hash = 2,
+				metiers = { [171] = { niveau = 1, max = 75, bits = ns.Bitset.encoder({ [3] = true }, 3) } } },
+			["Sansmetier Nu"] = { cle = "Sansmetier Nu", nom = "Sansmetier Nu", maj = 1, hash = 3, metiers = {} },
+		}
+		local membres = ns.Catalogue.nouveau(donnees, personnages, guilde):Membres()
+		local noms = {}
+		for _, m in ipairs(membres) do noms[#noms + 1] = m.nom end
+		assert.are.same({ "Brumefer", "Jean", "Wilgar Rolpik" }, noms)   -- triés, sans doublon ni membre sans métier
+		assert.is_true(membres[2].moi)
+		assert.is_false(membres[3].moi)
+		local wilgar = membres[3]
+		assert.are.equal("MAGE", wilgar.classe)
+		assert.are.equal("Alchimie", wilgar.metiers[1].nom)          -- métiers triés par nom
+		assert.are.equal(30, wilgar.metiers[1].niveau)
+		assert.are.equal(75, wilgar.metiers[1].max)
+		assert.are.equal(1, wilgar.metiers[1].recettes)
+		assert.are.equal("Enchantement", wilgar.metiers[2].nom)
+		assert.are.equal(2, #membres[2].metiers == 1 and 2 or 0)      -- Jean : un métier (nos données, pas celles de la guilde)
+		assert.are.equal(2, membres[2].metiers[1].recettes)           -- 424242 n'est pas dans la base
+	end)
 end)

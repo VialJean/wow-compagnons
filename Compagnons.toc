@@ -54,6 +54,7 @@ Modules\Marche.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
+UI\OngletMembres.lua
 UI\DialogueCommande.lua
 UI\Courses.lua
 UI\PanneauMetier.lua
