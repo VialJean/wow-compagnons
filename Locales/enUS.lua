@@ -44,6 +44,7 @@ ns.Textes.enUS = {
 	PRIX_ANCIEN = "old price",
 	PRIX_UNITAIRE = "Unit price: %s",
 	PRIX_APPROX = "≈ %s",
+	PROGRES_CRAFTES = "%d/%d crafted",
 
 	DEBUG_ON = "Debug enabled.",
 	DEBUG_OFF = "Debug disabled.",

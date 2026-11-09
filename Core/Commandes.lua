@@ -49,10 +49,16 @@ function Commandes.perimee(o, maintenant)
 	return Commandes.estFinale(o) and maintenant - o.maj > Commandes.DUREE_CONSERVATION
 end
 
+--- Nombre d'exemplaires fabriqués par le crafteur assigné (0 si rien n'est enregistré).
+function Commandes.crafte(o)
+	return o.progres and o.progres.craftes or 0
+end
+
 function Commandes.hash(o)
 	local morceaux = {
 		o.id, o.client, tostring(o.spell), tostring(o.qte), o.crafteur or "", o.mats, o.note or "",
 		o.statut, o.assigne or "", tostring(o.rev), tostring(o.cree), tostring(o.maj), o.par or "",
+		tostring(Commandes.crafte(o)),
 	}
 	return ns.Profil.adler(table.concat(morceaux, "\n"))
 end
@@ -113,6 +119,12 @@ function Commandes.valider(brut, donnees)
 		end
 	end
 
+	-- Progression : un nombre d'exemplaires fabriqués, entre 0 et la quantité commandée. Sans crafteur, elle n'a pas de sens.
+	if type(brut.progres) == "table" and type(brut.progres.craftes) == "number" and brut.progres.craftes == brut.progres.craftes
+		and brut.progres.craftes > 0 and brut.assigne then
+		c.progres = { craftes = math.min(math.floor(brut.progres.craftes), c.qte) }
+	end
+
 	-- Cohérence : une commande en cours a un crafteur, une commande ouverte n'en a pas.
 	local enCours = c.statut == "prise" or c.statut == "mats" or c.statut == "terminee"
 	if enCours and not c.assigne then return nil end
@@ -126,9 +138,17 @@ function Commandes.valider(brut, donnees)
 end
 
 --- Droits : qui peut faire quoi depuis quel état. Renvoie le nouveau statut, ou nil si interdit.
-local function suivant(o, action, par)
+local function suivant(o, action, par, extra)
 	local s = o.statut
-	if action == "prendre" then
+	if action == "progres" then
+		-- Le crafteur assigné fait avancer le nombre d'exemplaires fabriqués : sans changer d'état, et seulement vers le haut.
+		local n = extra and extra.craftes
+		if (s == "prise" or s == "mats") and par == o.assigne and type(n) == "number" and n == math.floor(n)
+			and n >= Commandes.crafte(o) and n <= o.qte then
+			return s
+		end
+		return nil
+	elseif action == "prendre" then
 		if s ~= "ouverte" then return nil end
 		if o.crafteur and o.crafteur ~= par then return nil end
 		return "prise"
@@ -146,8 +166,8 @@ end
 
 --- Applique une action de `par` à la commande. Renvoie la nouvelle commande (la précédente n'est pas modifiée),
 -- ou nil et une raison.
-function Commandes.appliquer(o, action, par, maintenant)
-	local statut = suivant(o, action, par)
+function Commandes.appliquer(o, action, par, maintenant, extra)
+	local statut = suivant(o, action, par, extra)
 	if not statut then return nil, "interdit" end
 	local c = {}
 	for k, v in pairs(o) do c[k] = v end
@@ -156,7 +176,16 @@ function Commandes.appliquer(o, action, par, maintenant)
 	c.maj = math.max(maintenant, o.maj) -- jamais en arrière, même si les horloges diffèrent
 	c.par = par
 	if statut == "prise" then c.assigne = par end
-	if statut == "ouverte" then c.assigne = nil end
+	if statut == "ouverte" then
+		c.assigne = nil
+		c.progres = nil -- libérée : la progression ne suit pas la commande
+	end
+	if action == "progres" then
+		-- Pas de ligne d'historique : il y en aurait une par fabrication.
+		c.progres = { craftes = extra.craftes }
+		c.hash = Commandes.hash(c)
+		return c
+	end
 	c.histo = {}
 	for i = math.max(1, #o.histo - MAX_HISTO + 2), #o.histo do c.histo[#c.histo + 1] = o.histo[i] end
 	c.histo[#c.histo + 1] = { c.maj, par, statut }
@@ -168,6 +197,14 @@ end
 function Commandes.transitionLegale(avant, apres)
 	if apres.id ~= avant.id or apres.client ~= avant.client or apres.spell ~= avant.spell then return false end
 	local par = apres.par
+
+	-- Progression seule : même état, même crafteur, mêmes termes de la commande, nombre fabriqué en hausse.
+	if apres.statut == avant.statut and (avant.statut == "prise" or avant.statut == "mats") then
+		return par == avant.assigne and apres.assigne == avant.assigne
+			and apres.qte == avant.qte and apres.mats == avant.mats and apres.crafteur == avant.crafteur
+			and (apres.note or "") == (avant.note or "")
+			and Commandes.crafte(apres) >= Commandes.crafte(avant) and Commandes.crafte(apres) <= apres.qte
+	end
 	local action
 	if apres.statut == "prise" then action = "prendre"
 	elseif apres.statut == "mats" then action = "mats"

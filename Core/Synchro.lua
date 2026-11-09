@@ -144,10 +144,10 @@ end
 
 --- Fait avancer une commande (prendre, mats, terminer, liberer, annuler) au nom du personnage `par`.
 -- Renvoie la nouvelle commande, ou nil et la raison.
-function Synchro:AgirCommande(id, action, par)
+function Synchro:AgirCommande(id, action, par, extra)
 	local actuelle = self.commandes[id]
 	if not actuelle then return nil, "inconnue" end
-	local nouvelle, erreur = ns.Commandes.appliquer(actuelle, action, par, self.maintenant())
+	local nouvelle, erreur = ns.Commandes.appliquer(actuelle, action, par, self.maintenant(), extra)
 	if not nouvelle then return nil, erreur end
 	self.commandes[id] = nouvelle
 	self:Envoyer("GUILD", nil, "ORDER_UPD", { v = Synchro.PROTOCOLE, commande = nouvelle })

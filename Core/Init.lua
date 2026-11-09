@@ -29,6 +29,7 @@ local defauts = {
 		minimap = { hide = false },
 		observer = false,
 		stock = { suivi = true },
+		livraison = { suivi = true }, -- suivi automatique des fabrications (et, plus tard, des échanges et courriers)
 		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},

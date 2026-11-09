@@ -1,6 +1,6 @@
 # Spécification — Livraison et stocks (piste v3)
 
-Statut : phases 0 et 1 implémentées (observation, stock par personnage, liste de courses) ; phases 2 à 6 à venir. Complète `docs/protocole.md` (commandes) et `docs/infobulles.md` (infobulles).
+Statut : phases 0, 1 et 2 implémentées (observation, stock et liste de courses, prix, progression des fabrications) ; phases 3 à 6 à venir. Complète `docs/protocole.md` (commandes) et `docs/infobulles.md` (infobulles).
 
 ## 1. Objectif
 
@@ -194,3 +194,39 @@ commande. Un composant sans prix n'est jamais ignoré en silence : il est compt�
    ne doivent pas se croire désynchronisés), échangés par des messages dédiés ignorés par les anciennes versions, avec la
    même règle « le plus récent gagne », des bornes de validation (prix plausibles, horodatage non futur) et un plafond de
    fréquence. À tester avec le simulateur de synchro.
+
+## 12. Résultats de l'observation en jeu (Forever 1.60.1, build 70862)
+
+**Fabrication** (relevé de quatre fabrications de la recette 2963) : chaque fabrication réussie produit, dans l'ordre,
+`TRADE_SKILL_CRAFT_BEGIN <recette>`, `UNIT_SPELLCAST_START player <castGUID> <recette>`,
+`UNIT_SPELLCAST_SUCCEEDED player <castGUID> <recette>`, `ITEM_PUSH`, `CHAT_MSG_LOOT « Vous créez : [objet] »`,
+`TRADE_SKILL_ITEM_CRAFTED_RESULT {table}` et `BAG_UPDATE_DELAYED`. L'identifiant de recette est le `spellID` de la base.
+Les fabrications en série s'enchaînent sans événement perdu (4 fabrications, 4 `SUCCEEDED`).
+**Signal retenu : `UNIT_SPELLCAST_SUCCEEDED` du joueur**, dédoublonné par `castGUID`.
+
+**Hôtel des ventes** : seule l'API moderne `C_AuctionHouse` existe (`SendBrowseQuery`, `SendSearchQuery`,
+`GetNumCommoditySearchResults`, `GetCommoditySearchResultInfo`, `GetBrowseResults`, `GetItemSearchResultInfo`) ; l'ancienne
+(`QueryAuctionItems`, `GetAuctionItemInfo`…) est absente. Événements : `AUCTION_HOUSE_SHOW`, `AUCTION_HOUSE_CLOSED`,
+`AUCTION_HOUSE_BROWSE_RESULTS_UPDATED`, `COMMODITY_SEARCH_RESULTS_UPDATED <itemID>`. Un prix a bien été relevé (25 cuivres
+pour l'objet 2589).
+
+**Événements connus** : tous ceux de la liste d'observation existent sauf `TRADE_SKILL_CRAFTING_BEGIN`. Courrier
+(`MAIL_SHOW`, `MAIL_INBOX_UPDATE`) et banque (`BANKFRAME_OPENED`, `BANKFRAME_CLOSED`) arrivent comme prévu.
+
+**Pas encore observé** : un échange (`TRADE_*`) et un courrier avec pièce jointe, envoyé puis reçu. Les phases 3 et 4 en
+dépendent.
+
+## 13. Phase 2 : progression des fabrications (implémentée)
+
+- **Modèle** : champ facultatif `progres = { craftes = n }` sur la commande, écrit **seulement par le crafteur assigné**.
+  Nouvelle action `progres` : même état, nombre fabriqué en hausse, jamais au-delà de la quantité. Aucune ligne d'historique
+  par fabrication. Libérer la commande remet la progression à zéro. Le protocole reste en version 2 : les anciennes versions
+  ignorent le champ.
+- **Contrôle à la réception** : une copie qui n'a qu'une révision d'écart et le même état n'est acceptée que si l'auteur est
+  le crafteur assigné, que la quantité, le mode de composants, la note et le crafteur n'ont pas changé, et que le nombre
+  fabriqué n'a pas reculé.
+- **Module `Fabrication`** : chaque `UNIT_SPELLCAST_SUCCEEDED` d'une recette de la base est rattaché à mes commandes prises
+  pour cette recette (la plus ancienne d'abord, dans la limite de ce qu'il reste), compte `qte` exemplaires par lancer (un
+  seul pour un enchantement). Enregistrement après 5 s sans fabrication, et au plus toutes les 30 s pendant une longue série.
+- **Affichage** : « 3/5 craftés » dans l'onglet Commandes et sur les cartes du panneau de métier.
+- **Option** : `profile.livraison.suivi` (activée).

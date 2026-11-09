@@ -472,3 +472,112 @@ describe("Synchro des commandes", function()
 		print(string.format("    20 clients : %d commandes, %d messages", n, r.messages))
 	end)
 end)
+
+-- ---------------------------------------------------------------------------------------------
+-- Progression des commandes (fabrications)
+-- ---------------------------------------------------------------------------------------------
+
+describe("Progression des commandes", function()
+	it("le crafteur assigné fait avancer le nombre fabriqué, et la guilde le voit", function()
+		local r, a, b = deuxClients(40)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		r:avancer(2)
+		assert.is_not_nil(b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 3 }))
+		r:avancer(2)
+		assert.are.equal(3, Commandes.crafte(a.commandes[c.id]))
+		assert.are.equal("prise", a.commandes[c.id].statut)         -- l'état ne change pas
+		assert.are.equal(2, #a.commandes[c.id].histo)                -- création et prise, pas une ligne par fabrication
+		assert.is_true(identiques({ a, b }))
+	end)
+
+	it("la progression ne peut qu'augmenter, ni dépasser la quantité, ni être faite par un autre", function()
+		local r, a, b = deuxClients(41)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 3 })
+		r:avancer(2)
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 2 })))  -- recul
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 6 })))  -- au-delà de la quantité
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 3.5 })))
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, {})))
+		assert.is_nil((a.moteur:AgirCommande(c.id, "progres", a.nom, { craftes = 4 })))  -- le client ne peut pas
+		assert.are.equal(3, Commandes.crafte(b.commandes[c.id]))
+	end)
+
+	it("pas de progression sur une commande ouverte ou finale", function()
+		local r, a, b = deuxClients(42)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 2 })
+		r:avancer(2)
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 1 })))
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		b.moteur:AgirCommande(c.id, "terminer", b.nom)
+		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 1 })))
+	end)
+
+	it("libérer la commande remet la progression à zéro", function()
+		local r, a, b = deuxClients(43)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 4 })
+		b.moteur:AgirCommande(c.id, "liberer", b.nom)
+		r:avancer(2)
+		assert.are.equal(0, Commandes.crafte(a.commandes[c.id]))
+	end)
+
+	it("rejette un message forgé qui change la progression d'une commande qui n'est pas la sienne", function()
+		local r, a, b = deuxClients(44)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		r:avancer(2)
+		local forge = copie(a.commandes[c.id])
+		forge.rev, forge.par, forge.progres, forge.maj = forge.rev + 1, "Mallory Evil", { craftes = 5 }, forge.maj + 1
+		forge.hash = Commandes.hash(forge)
+		a.moteur:Recevoir("ORDER_UPD", { v = Synchro.PROTOCOLE, commande = forge }, "Mallory-Evil")
+		assert.are.equal(0, Commandes.crafte(a.commandes[c.id]))
+	end)
+
+	it("rejette un message forgé qui glisse un autre changement avec la progression", function()
+		local r, a, b = deuxClients(45)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5, note = "ce soir" })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		r:avancer(2)
+		local forge = copie(a.commandes[c.id])
+		forge.rev, forge.par, forge.maj = forge.rev + 1, b.nom, forge.maj + 1
+		forge.progres, forge.qte = { craftes = 1 }, 1                 -- le « crafteur » réduit la quantité
+		forge.hash = Commandes.hash(forge)
+		a.moteur:Recevoir("ORDER_UPD", { v = Synchro.PROTOCOLE, commande = forge }, "Bastien-Roux")
+		assert.are.equal(5, a.commandes[c.id].qte)
+	end)
+
+	it("ramène une progression démesurée à la quantité commandée à la validation", function()
+		local c = Commandes.nouvelle({ client = "Zed Zorro", spell = 1001, qte = 5, maintenant = 1 })
+		c.statut, c.assigne, c.par, c.rev, c.progres = "prise", "Bastien Roux", "Bastien Roux", 1, { craftes = 999 }
+		local v = Commandes.valider(c, donnees)
+		assert.are.equal(5, Commandes.crafte(v))
+		c.progres = { craftes = 0 / 0 }
+		assert.are.equal(0, Commandes.crafte(Commandes.valider(c, donnees)))
+		c.progres = { craftes = -3 }
+		assert.are.equal(0, Commandes.crafte(Commandes.valider(c, donnees)))
+	end)
+
+	it("converge : une série de fabrications arrive chez tous, y compris ceux qui étaient hors ligne", function()
+		local r, a, b = deuxClients(46)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 5 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		a.enLigne = false
+		b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 2 })
+		b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 4 })
+		r:avancer(5)
+		connecter(a)
+		r:avancer(120)
+		assert.are.equal(4, Commandes.crafte(a.commandes[c.id]))
+		assert.is_true(identiques({ a, b }))
+	end)
+end)

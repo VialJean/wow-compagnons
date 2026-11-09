@@ -43,6 +43,7 @@ ns.Textes.frFR = {
 	PRIX_ANCIEN = "prix ancien",
 	PRIX_UNITAIRE = "Prix unitaire : %s",
 	PRIX_APPROX = "≈ %s",
+	PROGRES_CRAFTES = "%d/%d craftés",
 
 	DEBUG_ON = "Debug activé.",
 	DEBUG_OFF = "Debug désactivé.",

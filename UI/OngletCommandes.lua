@@ -198,8 +198,11 @@ function Fenetre:InitialiserLigneCommande(ligne, commande)
 	local metier = recette and ns.Recettes.metiers[recette.metier]
 	local miens = ns.Atelier:Miens()
 	local qui = miens[commande.client] and L.PAR_CLIENT or commande.client
-	ligne.meta:SetText(string.format("%s %d · %s · %s", metier and metier.nom or "?", recette and recette.niveau or 0,
-		qui, ns.Atelier.Age(commande.cree)))
+	local meta = string.format("%s %d · %s · %s", metier and metier.nom or "?", recette and recette.niveau or 0,
+		qui, ns.Atelier.Age(commande.cree))
+	local progres = ns.Progres.libelle(commande, L.PROGRES_CRAFTES)
+	if progres then meta = meta .. " · |cff5fd068" .. progres .. "|r" end
+	ligne.meta:SetText(meta)
 	ligne.mats:SetText(ns.Atelier.LibelleMats(commande))
 	local libelle, couleur = ns.Atelier.LibelleStatut(commande)
 	ligne.statut:SetText("|c" .. couleur .. libelle .. "|r")

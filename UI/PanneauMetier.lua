@@ -270,7 +270,9 @@ function Panneau:ActualiserCommandes(idMetier)
 			carte.titre:SetText(string.format("%d × %s", o.qte, recette and recette.nom or "?"))
 			local libelle, couleur = ns.Atelier.LibelleStatut(o)
 			local qui = miens[o.client] and L.PAR_CLIENT or o.client
-			carte.meta:SetText(string.format("%s · |c%s%s|r", qui, couleur, libelle))
+			local progres = ns.Progres.libelle(o, L.PROGRES_CRAFTES)
+			carte.meta:SetText(string.format("%s · |c%s%s|r%s", qui, couleur, libelle,
+				progres and (" · |cff5fd068" .. progres .. "|r") or ""))
 
 			-- Action principale disponible, sinon pas de bouton.
 			local principale
