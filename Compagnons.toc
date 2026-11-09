@@ -23,6 +23,7 @@ Core\Bitset.lua
 Core\Alias.lua
 Core\Observation.lua
 Core\Stock.lua
+Core\Prix.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
@@ -43,6 +44,7 @@ Modules\Reseau.lua
 Modules\Atelier.lua
 Modules\Observateur.lua
 Modules\Stocks.lua
+Modules\Marche.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua

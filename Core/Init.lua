@@ -21,6 +21,7 @@ local defauts = {
 		commandes = {},   -- (sprint commandes)
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
 		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
+		prix = {},        -- prix unitaires des composants à l'hôtel des ventes : [itemID] = { p, t }
 		diag = { sessions = 0 },
 	},
 	profile = {
@@ -108,6 +109,8 @@ function Compagnons:Commande(saisie)
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
+	elseif action == "prix" then
+		self:GetModule("Marche"):Commande(arg, arg2)
 	elseif action == "courses" then
 		self:GetModule("Courses"):Basculer()
 	elseif action == "stock" then
@@ -139,6 +142,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_OBSERVER)
 		print("  " .. L.AIDE_COURSES)
 		print("  " .. L.AIDE_STOCK)
+		print("  " .. L.AIDE_PRIX)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)

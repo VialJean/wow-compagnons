@@ -59,7 +59,7 @@ function Courses:Creer()
 
 	local cadre = CreateFrame("Frame", nil, f, "InsetFrameTemplate")
 	cadre:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -34)
-	cadre:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 46)
+	cadre:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 62)
 
 	local boite = CreateFrame("Frame", nil, cadre, "WowScrollBoxList")
 	local barre = CreateFrame("EventFrame", nil, cadre, "MinimalScrollBar")
@@ -79,7 +79,9 @@ function Courses:Creer()
 	f.vide:Hide()
 
 	f.bilan = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.bilan:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 20)
+	f.bilan:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 40)
+	f.cout = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	f.cout:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 18)
 
 	f.copier = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	f.copier:SetSize(180, 24)
@@ -117,7 +119,15 @@ function Courses:InitialiserLigne(ligne, e)
 	ligne.nom:SetText(e.nom)
 	local couleur = e.manque > 0 and "|cffe8806a" or "|cff5fd068"
 	local texte = string.format(L.COURSES_LIGNE, e.stock, e.besoin)
-	if e.manque > 0 then texte = texte .. "  ·  " .. couleur .. string.format(L.COURSES_MANQUE, e.manque) .. "|r" end
+	if e.manque > 0 then
+		texte = texte .. "  ·  " .. couleur .. string.format(L.COURSES_MANQUE, e.manque) .. "|r"
+		-- Coût du manque : « ? » quand aucun prix n'est connu pour ce composant.
+		if e.cout then
+			texte = texte .. "  ·  |cffe0b252" .. string.format(L.PRIX_APPROX, ns.Marche.Argent(e.cout)) .. "|r"
+		else
+			texte = texte .. "  ·  |cffa89c86?|r"
+		end
+	end
 	ligne.chiffres:SetText(texte)
 end
 
@@ -128,6 +138,12 @@ function Courses:Infobulle(ligne)
 	GameTooltip:SetOwner(ligne, "ANCHOR_RIGHT")
 	GameTooltip:SetText(e.nom, 1, 1, 1)
 	GameTooltip:AddLine(string.format(L.COURSES_COMMANDES_LIGNE, e.commandes), 0.66, 0.61, 0.53)
+	local unitaire, releve = ns.Marche:Pour(e.itemID)
+	if unitaire then
+		local age = " |cffa89c86(" .. ns.Atelier.Age(releve) .. ")|r"
+		if ns.Prix.ancien(releve, time()) then age = age .. " |cffe8a94f" .. L.PRIX_ANCIEN .. "|r" end
+		GameTooltip:AddLine(string.format(L.PRIX_UNITAIRE, ns.Marche.Argent(unitaire)) .. age, 0.88, 0.7, 0.32)
+	end
 	GameTooltip:AddLine(" ")
 	if #e.detail == 0 then
 		GameTooltip:AddLine(L.COURSES_AUCUN_STOCK, 0.9, 0.5, 0.42)
@@ -149,6 +165,7 @@ function Courses:Rafraichir()
 	local f = self.cadre
 	if not f or not f:IsShown() or not ns.Stocks then return end
 	local liste = ns.Stocks:Courses()
+	local cout = ns.Prix.coutListe(ns.db.global.prix, liste, time()) -- remplit aussi e.cout sur chaque ligne
 	f.liste:SetDataProvider(CreateDataProvider(liste))
 	f.vide:SetShown(#liste == 0)
 
@@ -157,6 +174,17 @@ function Courses:Rafraichir()
 		if e.manque > 0 then manque = manque + 1 end
 	end
 	f.bilan:SetText(#liste == 0 and "" or string.format(L.COURSES_BILAN, #liste, manque))
+
+	-- Coût estimé de ce qui manque, avec le nombre de composants dont le prix n'est pas connu.
+	if manque == 0 then
+		f.cout:SetText("")
+	elseif cout.total == 0 and cout.inconnus > 0 then
+		f.cout:SetText("|cffa89c86" .. L.PRIX_AUCUN .. "|r")
+	else
+		local texte = string.format(L.PRIX_COUT_MANQUE, ns.Marche.Argent(cout.total))
+		if cout.inconnus > 0 then texte = texte .. "  |cffa89c86(" .. string.format(L.PRIX_SANS, cout.inconnus) .. ")|r" end
+		f.cout:SetText(texte)
+	end
 	f.copier:SetEnabled(manque > 0)
 	self.liste = liste
 end

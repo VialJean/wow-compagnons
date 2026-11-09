@@ -229,6 +229,8 @@ function Dialogue:Creer()
 	-- Pied
 	f.visible = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.visible:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 18)
+	f.cout = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	f.cout:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 40)
 
 	f.publier = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	f.publier:SetSize(150, 26)
@@ -300,6 +302,25 @@ function Dialogue:ActualiserComposants()
 			ligne:Hide()
 		end
 	end
+	self:ActualiserCout()
+end
+
+--- Coût estimé des composants pour la quantité demandée (prix relevés à l'hôtel des ventes).
+function Dialogue:ActualiserCout()
+	local f = self.cadre
+	if not self.spellID then
+		f.cout:SetText("")
+		return
+	end
+	local cout = ns.Prix.coutRecette(ns.Recettes, ns.db.global.prix, self.spellID, self.qte, time())
+	if cout.total == 0 and cout.inconnus > 0 then
+		f.cout:SetText("|cffa89c86" .. L.PRIX_AUCUN .. "|r")
+		return
+	end
+	local modele = self.mats == "crafteur" and L.PRIX_CRAFTEUR or L.PRIX_COMPOSANTS
+	local texte = string.format(modele, ns.Marche.Argent(cout.total))
+	if cout.inconnus > 0 then texte = texte .. " |cffa89c86(" .. string.format(L.PRIX_SANS, cout.inconnus) .. ")|r" end
+	f.cout:SetText(texte)
 end
 
 function Dialogue:Publier()

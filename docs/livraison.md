@@ -165,3 +165,32 @@ ne pas deviner les événements de Forever.
 3. **Collecte de courrier** : option désactivée par défaut (proposé), limitée aux expéditeurs d'une commande ouverte.
 4. **Seuil de regroupement** des mises à jour de progression : 10 s (proposé).
 5. **Stock des autres personnages** : affiché avec sa date (proposé), avec avertissement s'il a plus de 7 jours.
+
+## 11. Estimation de coût (décision et état)
+
+**Décision** : les prix viennent de l'hôtel des ventes, **relevés par l'addon** quand le joueur cherche lui-même, puis
+(à terme) partagés avec la guilde par la synchro. Aucun scan automatique. Les prix de vendeur du client (`BuyPrice`,
+`SellPrice`) ne sont pas utilisés : beaucoup de composants ne s'achètent pas chez un PNJ, l'estimation serait fausse.
+
+**Affichage** : coût du manque dans la liste de courses (par ligne et en bas), coût des composants dans le dialogue de
+commande. Un composant sans prix n'est jamais ignoré en silence : il est compté (« 2 sans prix ») et la ligne affiche « ? ».
+
+**Fait (phase 1 bis)**
+- `Core/Prix.lua` (Lua pur, testé) : prix unitaire en cuivre avec horodatage, le plus récent gagne, valeurs aberrantes
+  refusées, minimum d'une liste de lots à achat immédiat, coût d'une recette ou d'une liste, montants lisibles.
+- `Modules/Marche.lua` : relevé à l'hôtel des ventes pour les deux familles d'API (ancienne :
+  `AUCTION_ITEM_LIST_UPDATE` ; moderne : `COMMODITY_SEARCH_RESULTS_UPDATED`), avec garde-fous. Seuls les composants de la base
+  sont mémorisés, au prix unitaire le plus bas à achat immédiat vu.
+- `/cpg prix id-ou-lien montant` fixe un prix à la main (un nombre seul est en pièces d'or) ; `/cpg prix` donne le nombre de
+  prix connus ; `/cpg prix clear` efface.
+- Prix de plus de trois jours signalés comme anciens dans l'infobulle de la liste de courses.
+
+**Reste à faire**
+1. **Vérifier en jeu** quelle API de l'hôtel des ventes Forever expose : `/cpg observer` relève désormais ces API et
+   événements à l'ouverture de l'hôtel des ventes. Si aucune des deux familles ne répond, le relevé automatique est à
+   adapter, et la saisie manuelle sert de repli.
+2. **Partager les prix avec la guilde** : n'importe quel membre qui visite l'hôtel des ventes met le prix à jour pour tous.
+   À concevoir sans casser la compatibilité : les prix restent **hors du hash global** (les clients qui ne les connaissent pas
+   ne doivent pas se croire désynchronisés), échangés par des messages dédiés ignorés par les anciennes versions, avec la
+   même règle « le plus récent gagne », des bornes de validation (prix plausibles, horodatage non futur) et un plafond de
+   fréquence. À tester avec le simulateur de synchro.
