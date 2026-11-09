@@ -75,6 +75,8 @@ function Compagnons:Commande(saisie)
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
+	elseif action == "minicarte" then
+		self:GetModule("Minicarte"):Basculer()
 	elseif action == "debug" then
 		local p = self.db.profile
 		p.debug = not p.debug
@@ -88,6 +90,7 @@ function Compagnons:Commande(saisie)
 	else
 		self:Print(L.AIDE_TITRE)
 		print("  " .. L.AIDE_OUVRIR)
+		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)

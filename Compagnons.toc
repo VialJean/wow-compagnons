@@ -28,3 +28,4 @@ Modules\Diagnostic.lua
 
 UI\Fenetre.lua
 UI\PanneauMetier.lua
+UI\Minicarte.lua

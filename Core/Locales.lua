@@ -44,6 +44,11 @@ L.EN_LIGNE = "en ligne"
 L.HORS_LIGNE = "hors ligne"
 L.PIED = "Base de recettes du build %s · %d personnage(s) scanné(s)"
 
+-- Minicarte
+L.MINICARTE_PERSOS = "%d personnage(s) scanné(s)"
+L.MINICARTE_AIDE = "Clic : ouvrir · Clic droit : masquer"
+L.MINICARTE_MASQUEE = "Bouton de minicarte masqué. /cpg minicarte pour le réafficher."
+
 -- Panneau de la fenêtre de métier
 L.PANNEAU_TITRE = "Compagnons · %s"
 L.SELECTIONNE_RECETTE = "Sélectionne une recette."
