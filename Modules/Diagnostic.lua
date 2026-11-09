@@ -132,6 +132,35 @@ function Diagnostic:Lancer()
 		end
 	end
 
+	-- 5 bis. Infobulles : API qui décident du branchement (voir docs/infobulles.md, §4.4)
+	section("Infobulles")
+	local function api(nom, valeur, detail)
+		ligne(valeur and OK or KO, "%s%s", nom, detail and (" : " .. detail) or "")
+	end
+	local enum = _G.Enum and _G.Enum.TooltipDataType
+	api("TooltipDataProcessor", _G.TooltipDataProcessor ~= nil)
+	api("TooltipDataProcessor.AddTooltipPostCall", _G.TooltipDataProcessor and _G.TooltipDataProcessor.AddTooltipPostCall ~= nil)
+	api("Enum.TooltipDataType.Item", enum and enum.Item ~= nil, enum and enum.Item and tostring(enum.Item) or nil)
+	api("GameTooltip", GameTooltip ~= nil)
+	api("GameTooltip:SetItemByID", GameTooltip and GameTooltip.SetItemByID ~= nil)
+	api("GameTooltip:GetItem", GameTooltip and GameTooltip.GetItem ~= nil)
+	api("GameTooltip:HookScript", GameTooltip and GameTooltip.HookScript ~= nil)
+	api("ItemRefTooltip", _G.ItemRefTooltip ~= nil)
+	api("ShoppingTooltip1", _G.ShoppingTooltip1 ~= nil)
+	api("C_Item.GetItemCount", C_Item and C_Item.GetItemCount ~= nil)
+	api("C_Item.GetItemNameByID", C_Item and C_Item.GetItemNameByID ~= nil)
+	api("IsShiftKeyDown / IsControlKeyDown", _G.IsShiftKeyDown ~= nil and _G.IsControlKeyDown ~= nil)
+	api("HandleModifiedItemClick", _G.HandleModifiedItemClick ~= nil)
+	api("ContainerFrameItemButton_OnModifiedClick", _G.ContainerFrameItemButton_OnModifiedClick ~= nil)
+	api("hooksecurefunc", _G.hooksecurefunc ~= nil)
+	-- Essai réel : une infobulle d'objet connue (Bandage en lin, 1251) se remplit-elle, et par quelle voie ?
+	if GameTooltip then
+		GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+		local ok = GameTooltip.SetItemByID and pcall(GameTooltip.SetItemByID, GameTooltip, 1251)
+		ligne(INFO, "SetItemByID(1251) -> %s, %d lignes", tostring(ok), GameTooltip:NumLines())
+		GameTooltip:Hide()
+	end
+
 	-- 6. Canal addon
 	section("Canal addon")
 	local CI = C_ChatInfo
