@@ -14,7 +14,8 @@ ns.PREFIXE = "COMPAGNONS"
 
 local defauts = {
 	global = {
-		schema = ns.SCHEMA_DB,
+		-- `schema` n'est volontairement pas ici : AceDB n'écrit pas les valeurs égales aux défauts,
+		-- or le Relais exige ce champ dans le fichier (voir OnInitialize).
 		personnages = {}, -- [clé perso] = { nom, royaume, classe, metiers = {}, maj }
 		guilde = {},      -- copie synchronisée des membres (sprint synchro)
 		commandes = {},   -- (sprint commandes)
@@ -36,6 +37,7 @@ end
 function Compagnons:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("CompagnonsDB", defauts, true)
 	ns.db = self.db
+	self.db.global.schema = ns.SCHEMA_DB
 	self:RegisterChatCommand("compagnons", "Commande")
 	self:RegisterChatCommand("cpg", "Commande")
 end
