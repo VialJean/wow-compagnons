@@ -21,6 +21,7 @@ Core\Bitset.lua
 Core\Catalogue.lua
 Core\Profil.lua
 Core\Commandes.lua
+Core\Infobulles.lua
 Core\Synchro.lua
 Debug\Log.lua
 
@@ -35,5 +36,6 @@ UI\Fenetre.lua
 UI\OngletCommandes.lua
 UI\DialogueCommande.lua
 UI\PanneauMetier.lua
+UI\Infobulles.lua
 UI\Alertes.lua
 UI\Minicarte.lua

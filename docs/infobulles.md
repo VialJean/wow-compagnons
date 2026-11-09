@@ -1,6 +1,8 @@
 # Spécification — Infobulles détaillées
 
-Statut : à valider. Source : section « Intégrations dans l'interface du jeu » de la spec Notion et écran
+Statut : implémentée (étapes 1 à 4), à vérifier en jeu avec la liste du §7. Décisions prises : touche Ctrl+Maj,
+crafteurs hors ligne affichés, ligne « personne » désactivée par défaut, seuil gris pour « monte encore », nombre de
+commandes seulement. Source : section « Intégrations dans l'interface du jeu » de la spec Notion et écran
 « Intégrations » de la maquette. Cette spec précise ce que la spec Notion laissait ouvert (« à revoir quand on y sera »).
 
 ## 1. Objectif
@@ -73,8 +75,9 @@ craftable d'abord, séparés par une ligne vide.
 1. Ajout en **fin d'infobulle**, après tout ce que le jeu et les autres addons écrivent.
 2. **Jamais en double** : une infobulle peut être reconstruite plusieurs fois pendant un même survol. On marque l'infobulle
    avec l'identifiant de l'objet déjà traité et on le réinitialise quand elle est vidée.
-3. **Pas de coût caché** : le calcul d'un survol est borné (index précalculés, résultat mis en cache par objet, cache
-   invalidé par les messages `COMPAGNONS_CATALOGUE_MAJ` et `COMPAGNONS_COMMANDES_MAJ`).
+3. **Pas de coût caché** : le calcul d'un survol est borné (index « objet → recettes » précalculés à la première demande).
+   Mesuré sur la base réelle : 20 ms pour les 2 919 objets, 2 ms au pire pour un seul. Aucun cache n'est donc nécessaire,
+   ce qui évite d'avoir à l'invalider quand le stock, les commandes ou les profils changent.
 4. **En combat** : même comportement qu'en dehors, le calcul est léger. Seule l'alerte (toast) attend la fin du combat.
 5. **Maj enfoncé ou relâché** pendant le survol met l'infobulle à jour (`MODIFIER_STATE_CHANGED`).
 6. **Jamais d'erreur visible** : tout est protégé par `pcall` et journalisé (`/cpg journal`).
@@ -112,6 +115,11 @@ cas du §2 avec des données fictives.
 - L'identifiant d'objet vient de la donnée de l'infobulle (`data.id`) ou de `tooltip:GetItem()`.
 - Les lignes sont ajoutées par `AddLine` / `AddDoubleLine`, puis `tooltip:Show()` pour recalculer la taille.
 - Cibles : `GameTooltip`, `ItemRefTooltip` (liens du chat). Les infobulles de comparaison sont ignorées.
+
+Relevé en jeu : `TooltipDataProcessor` (avec `AddTooltipPostCall`), `Enum.TooltipDataType.Item`, `GameTooltip:SetItemByID`,
+`GetItem`, `HookScript`, `ItemRefTooltip`, `HandleModifiedItemClick` sont tous présents ; seul
+`ContainerFrameItemButton_OnModifiedClick` est absent, ce qui est sans conséquence. Le crochet moderne est donc
+utilisé, sans repli par `OnTooltipSetItem`.
 
 ### 4.4 Vérification préalable des API (Modules/Diagnostic.lua)
 

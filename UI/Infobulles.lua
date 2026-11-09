@@ -1,0 +1,167 @@
+-- Branche le texte des infobulles (Core/Infobulles.lua) sur celles du jeu, et gère la commande rapide
+-- Ctrl+Maj+clic sur un objet. Voir docs/infobulles.md.
+local _, ns = ...
+local L = ns.L
+local Compagnons = ns.addon
+
+local Module = Compagnons:NewModule("InfobullesObjet", "AceEvent-3.0")
+ns.InfobullesObjet = Module
+
+local DELAI_DOUBLON = 0.3 -- un même clic peut passer par deux fonctions du jeu
+
+local function securise(etape, fn, ...)
+	local ok, resultat = pcall(fn, ...)
+	if not ok then
+		ns.log("erreur", "ui", "%s : %s", etape, tostring(resultat))
+		return nil
+	end
+	return resultat
+end
+
+local function stock(itemID)
+	if C_Item and C_Item.GetItemCount then return C_Item.GetItemCount(itemID, true) or 0 end
+	if GetItemCount then return GetItemCount(itemID, true) or 0 end
+	return 0
+end
+
+local function couleurClasse(classe)
+	local c = classe and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classe]
+	if c then return c.r, c.g, c.b end
+	return 0.8, 0.8, 0.8
+end
+
+--- Données fournies au texte des infobulles.
+function Module:Contexte()
+	return {
+		catalogue = ns.catalogue,
+		commandes = ns.db.global.commandes,
+		miens = ns.Atelier:Miens(),
+		connait = function(spellID) return ns.Atelier:Connait(spellID) end,
+		stock = stock,
+		enLigne = ns.estEnLigne,
+		maj = IsShiftKeyDown(),
+		options = ns.db.profile.infobulles,
+		couleurClasse = couleurClasse,
+	}
+end
+
+function Module:OnEnable()
+	local donnees = _G.Enum and _G.Enum.TooltipDataType
+	if _G.TooltipDataProcessor and _G.TooltipDataProcessor.AddTooltipPostCall and donnees and donnees.Item then
+		_G.TooltipDataProcessor.AddTooltipPostCall(donnees.Item, function(infobulle, data)
+			securise("infobulle d'objet", self.Ajouter, self, infobulle, data)
+		end)
+	else
+		ns.log("warn", "ui", "TooltipDataProcessor indisponible : infobulles d'objet désactivées")
+	end
+
+	-- Une infobulle réutilisée d'un objet à l'autre : on oublie le marquage quand elle est vidée.
+	for _, infobulle in ipairs({ GameTooltip, _G.ItemRefTooltip }) do
+		if infobulle and infobulle.HookScript then
+			infobulle:HookScript("OnTooltipCleared", function(t) t.cpgAjoute = nil end)
+		end
+	end
+
+	self:RegisterEvent("MODIFIER_STATE_CHANGED", "SurModificateur")
+
+	-- Commande rapide : après les actions du jeu.
+	if _G.hooksecurefunc then
+		if _G.HandleModifiedItemClick then
+			hooksecurefunc("HandleModifiedItemClick", function(lien)
+				securise("commande rapide", self.SurClic, self, lien)
+			end)
+		end
+		if _G.SetItemRef then
+			hooksecurefunc("SetItemRef", function(lien)
+				securise("commande rapide (chat)", self.SurClic, self, lien)
+			end)
+		end
+	end
+end
+
+--- Ajoute le bloc Compagnons à une infobulle d'objet du jeu.
+function Module:Ajouter(infobulle, data)
+	if infobulle ~= GameTooltip and infobulle ~= _G.ItemRefTooltip then return end -- pas les comparaisons
+	local itemID = data and data.id
+	if not itemID or not ns.catalogue or not ns.Atelier then return end
+	if infobulle.cpgAjoute == itemID then return end -- jamais en double
+
+	local lignes = ns.Infobulles.lignes(self:Contexte(), itemID)
+	if not lignes then return end
+	infobulle.cpgAjoute = itemID
+	infobulle:AddLine(" ")
+	for _, l in ipairs(lignes) do infobulle:AddLine(l.texte, l.r, l.g, l.b) end
+end
+
+--- Maj enfoncé ou relâché : l'infobulle d'un composant change (liste de crafteurs ou détail des recettes).
+function Module:SurModificateur()
+	if GameTooltip and GameTooltip:IsShown() and GameTooltip.cpgAjoute and GameTooltip.RefreshData then
+		securise("rafraîchissement de l'infobulle", GameTooltip.RefreshData, GameTooltip)
+	end
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- Commande rapide
+-- ---------------------------------------------------------------------------------------------
+
+local function toucheActive(reglage)
+	local maj, ctrl = IsShiftKeyDown(), IsControlKeyDown()
+	if reglage == "ctrlmaj" then return maj and ctrl end
+	if reglage == "maj" then return maj and not ctrl end
+	return false
+end
+
+--- La recette à commander pour un objet : celle dont le plus de crafteurs sont en ligne, puis la moins élevée.
+function Module:MeilleureRecette(itemID)
+	local meilleure, score, niveau
+	for _, spellID in ipairs(ns.catalogue:RecettesCreant(itemID)) do
+		local enLigne = 0
+		for _, c in ipairs(ns.catalogue:Crafteurs(spellID)) do
+			if ns.estEnLigne(c.cle) then enLigne = enLigne + 1 end
+		end
+		local n = ns.Recettes.recettes[spellID].niveau
+		if not meilleure or enLigne > score or (enLigne == score and n < niveau) then
+			meilleure, score, niveau = spellID, enLigne, n
+		end
+	end
+	return meilleure
+end
+
+function Module:SurClic(lien)
+	if type(lien) ~= "string" or not ns.catalogue then return end
+	if not toucheActive(ns.db.profile.infobulles.commander) then return end
+	if InCombatLockdown() then return end
+	local itemID = tonumber(lien:match("item:(%d+)"))
+	if not itemID then return end
+
+	local maintenant = GetTime()
+	if self.dernierClic and self.dernierClic.id == itemID and maintenant - self.dernierClic.t < DELAI_DOUBLON then return end
+	self.dernierClic = { id = itemID, t = maintenant }
+
+	local recette = self:MeilleureRecette(itemID)
+	if not recette then
+		Compagnons:Print(L.INFO_AUCUNE_RECETTE)
+		return
+	end
+	ns.Dialogue:Ouvrir(recette)
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- /cpg infobulles
+-- ---------------------------------------------------------------------------------------------
+
+local function etat(v) return v and L.INFO_ACTIVE or L.INFO_DESACTIVE end
+
+--- /cpg infobulles [objet|composant|personne|commander <ctrlmaj|maj|aucune>]
+function Module:Commande(option, valeur)
+	local reglages = ns.db.profile.infobulles
+	option = option and option:lower() or ""
+	if option == "objet" or option == "composant" or option == "personne" then
+		reglages[option] = not reglages[option]
+	elseif option == "commander" then
+		valeur = valeur and valeur:lower() or ""
+		if valeur == "ctrlmaj" or valeur == "maj" or valeur == "aucune" then reglages.commander = valeur end
+	end
+	Compagnons:Print(string.format(L.INFO_ETAT, etat(reglages.objet), etat(reglages.composant),
+		etat(reglages.personne), reglages.commander))
+end

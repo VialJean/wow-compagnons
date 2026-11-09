@@ -196,6 +196,48 @@ function Catalogue:Metiers()
 	return liste
 end
 
+--- Index « objet → recettes », construits une fois à la première demande.
+local function indexer(self)
+	if self.creant then return end
+	self.creant, self.utilisant = {}, {}
+	for spellID, r in pairs(self.donnees.recettes) do
+		if r.objet and r.objet > 0 then
+			local l = self.creant[r.objet]
+			if not l then l = {}; self.creant[r.objet] = l end
+			l[#l + 1] = spellID
+		end
+		for _, comp in ipairs(r.composants or {}) do
+			local l = self.utilisant[comp[1]]
+			if not l then l = {}; self.utilisant[comp[1]] = l end
+			l[#l + 1] = spellID
+		end
+	end
+	for _, index in ipairs({ self.creant, self.utilisant }) do
+		for _, l in pairs(index) do table.sort(l) end
+	end
+end
+
+--- spellIDs des recettes qui créent l'objet.
+function Catalogue:RecettesCreant(itemID)
+	indexer(self)
+	return self.creant[itemID] or {}
+end
+
+--- spellIDs des recettes qui consomment l'objet comme composant.
+function Catalogue:RecettesUtilisant(itemID)
+	indexer(self)
+	return self.utilisant[itemID] or {}
+end
+
+--- Quantité de `itemID` consommée par la recette (0 si elle ne l'utilise pas).
+function Catalogue:QuantiteComposant(spellID, itemID)
+	local r = self.donnees.recettes[spellID]
+	for _, comp in ipairs(r and r.composants or {}) do
+		if comp[1] == itemID then return comp[2] end
+	end
+	return 0
+end
+
 --- Résumé des quantités de composants d'une recette : { { itemID, qte, nom, qualite }, ... }.
 function Catalogue:Composants(spellID)
 	local r = self.donnees.recettes[spellID]

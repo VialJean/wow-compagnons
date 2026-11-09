@@ -24,6 +24,7 @@ local defauts = {
 	profile = {
 		debug = false,
 		minimap = { hide = false },
+		infobulles = { objet = true, composant = true, personne = false, commander = "ctrlmaj" },
 	},
 }
 
@@ -90,11 +91,13 @@ function Compagnons:OnEnable()
 end
 
 function Compagnons:Commande(saisie)
-	local action, arg = self:GetArgs(saisie, 2)
+	local action, arg, arg2 = self:GetArgs(saisie, 3)
 	action = action and action:lower() or ""
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
+	elseif action == "infobulles" then
+		self:GetModule("InfobullesObjet"):Commande(arg, arg2)
 	elseif action == "sync" then
 		self:GetModule("Reseau"):Etat(arg)
 	elseif action == "minicarte" then
@@ -114,6 +117,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_OUVRIR)
 		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_SYNC)
+		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)
