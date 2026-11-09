@@ -29,15 +29,17 @@ function Catalogue.normaliser(texte)
 end
 local normaliser = Catalogue.normaliser
 
---- Crée un catalogue. `personnages` peut être remplacé plus tard par :Actualiser().
-function Catalogue.nouveau(donnees, personnages)
+--- Crée un catalogue.
+-- personnages : métiers scannés sur ce compte (listes de spellIDs)
+-- guilde      : profils reçus des autres membres (bitsets) ; ils sont ignorés pour nos propres personnages
+function Catalogue.nouveau(donnees, personnages, guilde)
 	local c = setmetatable({
 		donnees = donnees or { metiers = {}, recettes = {}, objets = {} },
 		recherche = {}, -- [spellID] = texte normalisé (recette + composants)
 		triees = nil,   -- spellIDs triés une fois pour toutes
 		connus = {},    -- [spellID] = { { cle, nom, classe, niveau }, ... }
 	}, Catalogue)
-	c:Actualiser(personnages)
+	c:Actualiser(personnages, guilde)
 	return c
 end
 
@@ -46,43 +48,45 @@ local function nomMetier(donnees, id)
 	return m and m.nom or tostring(id)
 end
 
---- Identifie le métier de la base correspondant à un métier scanné (par id, sinon par nom).
-local function idMetier(donnees, metier, cleStockage)
-	if metier.id and donnees.metiers[metier.id] then return metier.id end
-	if type(cleStockage) == "number" and donnees.metiers[cleStockage] then return cleStockage end
-	local voulu = normaliser(metier.nom or (type(cleStockage) == "string" and cleStockage) or "")
-	if voulu == "" then return nil end
-	for id, m in pairs(donnees.metiers) do
-		if normaliser(m.nom) == voulu then return id end
-	end
-	return nil
-end
-
 --- Reconstruit l'index « recette → personnages qui la connaissent ».
-function Catalogue:Actualiser(personnages)
+function Catalogue:Actualiser(personnages, guilde)
 	if personnages then self.personnages = personnages end
+	if guilde then self.guilde = guilde end
 	self.connus = {}
-	for cle, perso in pairs(self.personnages or {}) do
+
+	local function ajouter(spellID, cle, nom, classe, niveau)
+		local liste = self.connus[spellID]
+		if not liste then
+			liste = {}
+			self.connus[spellID] = liste
+		end
+		liste[#liste + 1] = { cle = cle, nom = nom, classe = classe, niveau = niveau }
+	end
+
+	local propres = self.personnages or {}
+	for cle, perso in pairs(propres) do
 		for cleMetier, metier in pairs(perso.metiers or {}) do
-			local id = idMetier(self.donnees, metier, cleMetier)
+			local id = ns.Profil.idMetier(self.donnees, metier, cleMetier)
 			for _, spellID in ipairs(metier.recettes or {}) do
 				local r = self.donnees.recettes[spellID]
 				if r and (id == nil or r.metier == id) then
-					local liste = self.connus[spellID]
-					if not liste then
-						liste = {}
-						self.connus[spellID] = liste
-					end
-					liste[#liste + 1] = {
-						cle = cle,
-						nom = perso.nom or cle,
-						classe = perso.classe,
-						niveau = metier.niveau,
-					}
+					ajouter(spellID, cle, perso.nom or cle, perso.classe, metier.niveau)
 				end
 			end
 		end
 	end
+
+	for cle, profil in pairs(self.guilde or {}) do
+		if not propres[cle] then
+			for id, spells in pairs(ns.Profil.recettes(profil, self.donnees)) do
+				local niveau = profil.metiers[id].niveau
+				for _, spellID in ipairs(spells) do
+					ajouter(spellID, cle, profil.nom or cle, profil.classe, niveau)
+				end
+			end
+		end
+	end
+
 	for _, liste in pairs(self.connus) do
 		table.sort(liste, function(a, b) return a.cle < b.cle end)
 	end

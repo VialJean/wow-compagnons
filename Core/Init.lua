@@ -79,7 +79,7 @@ function Compagnons:OnEnable()
 	CompagnonsPersoDB.sessions = (CompagnonsPersoDB.sessions or 0) + 1
 
 	-- Base de recettes croisée avec les métiers connus ; mise à jour après chaque scan.
-	ns.catalogue = ns.Catalogue.nouveau(ns.Recettes, self.db.global.personnages)
+	ns.catalogue = ns.Catalogue.nouveau(ns.Recettes, self.db.global.personnages, self.db.global.guilde)
 	self:RegisterMessage("COMPAGNONS_METIER_SCANNE", function()
 		ns.catalogue:Actualiser()
 		self:SendMessage("COMPAGNONS_CATALOGUE_MAJ")
@@ -95,6 +95,8 @@ function Compagnons:Commande(saisie)
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
+	elseif action == "sync" then
+		self:GetModule("Reseau"):Etat(arg)
 	elseif action == "minicarte" then
 		self:GetModule("Minicarte"):Basculer()
 	elseif action == "debug" then
@@ -111,6 +113,7 @@ function Compagnons:Commande(saisie)
 		self:Print(L.AIDE_TITRE)
 		print("  " .. L.AIDE_OUVRIR)
 		print("  " .. L.AIDE_MINICARTE)
+		print("  " .. L.AIDE_SYNC)
 		print("  " .. L.AIDE_DEBUG)
 		print("  " .. L.AIDE_JOURNAL)
 		print("  " .. L.AIDE_PERSO)

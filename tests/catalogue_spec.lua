@@ -1,9 +1,10 @@
 -- Tests hors jeu du Catalogue (recherche, filtres, crafteurs) : busted tests
 local function charger()
 	local ns = {}
-	local chunk = assert(loadfile("Core/Catalogue.lua"))
-	chunk("Compagnons", ns)
-	return ns.Catalogue
+	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua" }) do
+		assert(loadfile(fichier))("Compagnons", ns)
+	end
+	return ns.Catalogue, ns
 end
 
 local donnees = {
@@ -120,6 +121,24 @@ describe("Catalogue", function()
 		assert.are.equal("Terrestrine", comps[1].nom)
 		assert.are.equal(2449, comps[1].itemID)
 		assert.are.same({}, c:Composants(1))
+	end)
+
+	it("lit les profils des autres membres (bitsets) et ignore ceux de nos propres personnages", function()
+		local _, ns = charger()
+		local guilde = {
+			["Wilgar Rolpik"] = { cle = "Wilgar Rolpik", nom = "Wilgar Rolpik", classe = "MAGE", maj = 5, hash = 1,
+				metiers = { [171] = { niveau = 30, max = 75, bits = ns.Bitset.encoder({ [3] = true }, 3) } } },
+			-- version de la guilde d'un personnage qui est à nous : doit être ignorée
+			["Jean-Royaume"] = { cle = "Jean-Royaume", nom = "Jean", maj = 1, hash = 2,
+				metiers = { [171] = { niveau = 1, max = 75, bits = ns.Bitset.encoder({ [3] = true }, 3) } } },
+		}
+		local avec = ns.Catalogue.nouveau(donnees, personnages, guilde)
+		local liste = avec:Crafteurs(3000)
+		assert.are.equal(1, #liste)
+		assert.are.equal("Wilgar Rolpik", liste[1].cle)
+		assert.are.equal("MAGE", liste[1].classe)
+		assert.are.equal(30, liste[1].niveau)
+		assert.are.equal(2, #avec:Crafteurs(2329)) -- les nôtres, pas de doublon
 	end)
 
 	it("se met à jour quand les personnages changent", function()

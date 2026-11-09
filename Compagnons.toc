@@ -19,12 +19,15 @@ Core\Locales.lua
 Core\Init.lua
 Core\Bitset.lua
 Core\Catalogue.lua
+Core\Profil.lua
+Core\Synchro.lua
 Debug\Log.lua
 
 Data\Recettes.lua
 
 Modules\Scanner.lua
 Modules\Diagnostic.lua
+Modules\Reseau.lua
 
 UI\Fenetre.lua
 UI\PanneauMetier.lua

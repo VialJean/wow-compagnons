@@ -24,7 +24,7 @@ read_globals = {
 	"GetBuildInfo", "GetNormalizedRealmName", "GetRealmName", "GetTradeSkillLine",
 	"IsInGuild", "IsTrialAccount", "IsVeteranTrialAccount",
 	"UnitClass", "UnitName", "UnitFullName", "GetUnitName", "UnitGUID", "GetPlayerInfoByGUID",
-	"GetGuildRosterInfo", "GetNumGuildMembers",
+	"GetGuildRosterInfo", "GetNumGuildMembers", "C_GuildInfo", "GuildRoster",
 	"date", "time", "tinsert",
 	-- Interface
 	"CreateFrame", "UIParent", "UISpecialFrames", "GameTooltip",
