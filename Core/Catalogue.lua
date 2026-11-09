@@ -229,6 +229,29 @@ function Catalogue:RecettesUtilisant(itemID)
 	return self.utilisant[itemID] or {}
 end
 
+Catalogue.ENCHANTEMENT = 333 -- skillLineID du métier Enchantement
+
+--- Personnages qui ont le métier Enchantement, avec leur niveau : { { cle, nom, classe, niveau }, ... }.
+-- Nos personnages (listes de recettes) et les profils reçus des autres membres.
+function Catalogue:Enchanteurs()
+	local liste = {}
+	local propres = self.personnages or {}
+	for cle, perso in pairs(propres) do
+		for cleMetier, metier in pairs(perso.metiers or {}) do
+			if ns.Profil.idMetier(self.donnees, metier, cleMetier) == Catalogue.ENCHANTEMENT then
+				liste[#liste + 1] = { cle = cle, nom = perso.nom or cle, classe = perso.classe, niveau = metier.niveau or 0 }
+			end
+		end
+	end
+	for cle, profil in pairs(self.guilde or {}) do
+		local m = not propres[cle] and profil.metiers and profil.metiers[Catalogue.ENCHANTEMENT]
+		if m then
+			liste[#liste + 1] = { cle = cle, nom = profil.nom or cle, classe = profil.classe, niveau = m.niveau or 0 }
+		end
+	end
+	return liste
+end
+
 --- Quantité de `itemID` consommée par la recette (0 si elle ne l'utilise pas).
 function Catalogue:QuantiteComposant(spellID, itemID)
 	local r = self.donnees.recettes[spellID]

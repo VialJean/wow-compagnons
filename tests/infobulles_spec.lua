@@ -2,7 +2,7 @@
 local function charger()
 	local ns = {}
 	for _, fichier in ipairs({ "Core/Locales.lua", "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua",
-		"Core/Commandes.lua", "Core/Infobulles.lua" }) do
+		"Core/Commandes.lua", "Core/Desenchanter.lua", "Data/Desenchantement.lua", "Core/Infobulles.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
 	return ns
@@ -327,5 +327,149 @@ describe("Infobulles : objet craftable et composant à la fois", function()
 	it("renvoie nil pour un objet qui n'intéresse pas l'addon", function()
 		local ctx = contexte({})
 		assert.is_nil(ns.Infobulles.lignes(ctx, 424242))
+	end)
+end)
+
+-- ---------------------------------------------------------------------------------------------
+-- Désenchantement
+-- ---------------------------------------------------------------------------------------------
+
+describe("Désenchanter : éligibilité (tranches du client)", function()
+	local function tranche(classe, sous, qualite, niveau)
+		return ns.Desenchanter.tranche(ns.Desenchantement, classe, sous, qualite, niveau)
+	end
+
+	it("reconnaît les armes et armures inhabituelles dans leurs tranches, bornes comprises", function()
+		assert.is_not_nil(tranche(4, 0, 2, 5))
+		assert.is_not_nil(tranche(4, 0, 2, 15))
+		assert.is_not_nil(tranche(2, 7, 2, 42))
+		assert.is_not_nil(tranche(4, 1, 2, 99))
+	end)
+
+	it("refuse sous le niveau 5, au-delà de 99 et hors tranche", function()
+		assert.is_nil(tranche(4, 0, 2, 4))
+		assert.is_nil(tranche(4, 0, 2, 100))
+	end)
+
+	it("les épiques ne se désenchantent qu'à partir du niveau d'objet 40", function()
+		assert.is_nil(tranche(4, 0, 4, 39))
+		assert.is_not_nil(tranche(4, 0, 4, 40))
+		assert.is_not_nil(tranche(2, 0, 4, 60))
+	end)
+
+	it("refuse les autres classes d'objet et les qualités non concernées", function()
+		assert.is_nil(tranche(0, 0, 2, 20))  -- consommable
+		assert.is_nil(tranche(7, 0, 2, 20))  -- artisanat
+		assert.is_nil(tranche(4, 0, 1, 20))  -- ordinaire
+		assert.is_nil(tranche(4, 0, 0, 20))  -- médiocre
+		assert.is_nil(tranche(4, 0, 5, 60))  -- légendaire
+	end)
+
+	it("n'explose pas sur des valeurs manquantes", function()
+		assert.is_nil(ns.Desenchanter.tranche(ns.Desenchantement, nil, nil, nil, nil))
+		assert.is_nil(ns.Desenchanter.tranche(nil, 4, 0, 2, 20))
+		assert.is_nil(ns.Desenchanter.tranche({}, 4, 0, 2, 20))
+	end)
+
+	it("une sous-classe précise l'emporte sur « toutes »", function()
+		local donnees = { tranches = {
+			{ classe = 4, sous = -1, qualite = 2, min = 1, max = 99 },
+			{ classe = 4, sous = 3, qualite = 2, min = 10, max = 20 },
+		} }
+		assert.are.equal(3, ns.Desenchanter.tranche(donnees, 4, 3, 2, 15).sous)
+		assert.are.equal(-1, ns.Desenchanter.tranche(donnees, 4, 1, 2, 15).sous)
+	end)
+end)
+
+describe("Infobulles : désenchantement", function()
+	local personnages, ctx, objet
+
+	local function enchanteur(nom, classe, niveau)
+		return { nom = nom, classe = classe,
+			metiers = { [333] = { id = 333, nom = "Enchantement", niveau = niveau, recettes = {} } } }
+	end
+
+	before_each(function()
+		personnages = {
+			["Jean Vialjean"] = enchanteur("Jean Vialjean", "SHAMAN", 60),
+			["Brumefer Hautrocher"] = enchanteur("Brumefer Hautrocher", "WARRIOR", 140),
+			["Orvanne Test"] = enchanteur("Orvanne Test", "MAGE", 150),
+			["Sans Metier"] = perso("Sans Metier", "MAGE", 10, { 2329 }),
+		}
+		donnees.metiers[333] = { nom = "Enchantement", ordre = {} }
+		ctx = contexte(personnages)
+		ctx.options.desenchantement = true
+		ctx.options.aucunEnchanteur = true
+		objet = { classe = 4, sous = 1, qualite = 2, niveau = 42 }
+		ctx.infoObjet = function() return objet end
+		ctx.enLigne = function(cle) return cle == "Orvanne Test" end
+	end)
+
+	after_each(function()
+		donnees.metiers[333] = nil
+	end)
+
+	it("annonce que l'objet est désenchantable et liste les enchanteurs, en ligne d'abord puis par niveau", function()
+		local t = textes(ns.Infobulles.desenchanter(ctx, 12345))
+		assert.are.equal("Compagnons · désenchantement", t[1])
+		assert.are.equal("Désenchantable · niveau d'objet 42", t[2])
+		assert.are.equal("Enchanteurs : Orvanne Test (en ligne, 150), Brumefer Hautrocher (140), Jean Vialjean (toi, 60)", t[3])
+	end)
+
+	it("ne liste que les personnages qui ont l'Enchantement", function()
+		assert.is_false(contient(ns.Infobulles.desenchanter(ctx, 12345), "Sans Metier"))
+	end)
+
+	it("n'ajoute rien pour un objet qui ne se désenchante pas", function()
+		objet = { classe = 0, sous = 0, qualite = 2, niveau = 42 } -- consommable
+		assert.is_nil(ns.Infobulles.desenchanter(ctx, 12345))
+		objet = { classe = 4, sous = 1, qualite = 1, niveau = 42 } -- ordinaire
+		assert.is_nil(ns.Infobulles.desenchanter(ctx, 12345))
+	end)
+
+	it("n'ajoute rien si le jeu n'a pas encore les informations de l'objet", function()
+		ctx.infoObjet = function() return nil end
+		assert.is_nil(ns.Infobulles.desenchanter(ctx, 12345))
+	end)
+
+	it("signale l'absence d'enchanteur, sauf si l'option est coupée", function()
+		local seuls = { ["Sans Metier"] = perso("Sans Metier", "MAGE", 10, { 2329 }) }
+		ctx = contexte(seuls)
+		ctx.options.desenchantement, ctx.options.aucunEnchanteur = true, true
+		ctx.infoObjet = function() return objet end
+		assert.is_true(contient(ns.Infobulles.desenchanter(ctx, 12345), "Aucun enchanteur dans la guilde"))
+		ctx.options.aucunEnchanteur = false
+		assert.is_false(contient(ns.Infobulles.desenchanter(ctx, 12345), "Aucun enchanteur"))
+		assert.is_true(contient(ns.Infobulles.desenchanter(ctx, 12345), "Désenchantable"))
+	end)
+
+	it("se coupe avec l'option", function()
+		ctx.options.desenchantement = false
+		assert.is_nil(ns.Infobulles.desenchanter(ctx, 12345))
+	end)
+
+	it("limite à quatre enchanteurs puis « et N autres »", function()
+		for i = 1, 3 do personnages["Membre" .. i .. " Test"] = enchanteur("Membre" .. i .. " Test", "MAGE", 10 * i) end
+		ctx = contexte(personnages)
+		ctx.options.desenchantement, ctx.options.aucunEnchanteur = true, true
+		ctx.infoObjet = function() return objet end
+		assert.is_true(contient(ns.Infobulles.desenchanter(ctx, 12345), "et 2 autres"))
+	end)
+
+	it("lit aussi le niveau d'Enchantement des autres membres (profils reçus)", function()
+		local profil = { cle = "Wilgar Rolpik", nom = "Wilgar Rolpik", classe = "MAGE", maj = 5, hash = 1,
+			metiers = { [333] = { niveau = 225, max = 300, bits = "" } } }
+		ctx.catalogue = ns.Catalogue.nouveau(donnees, personnages, { ["Wilgar Rolpik"] = profil })
+		assert.is_true(contient(ns.Infobulles.desenchanter(ctx, 12345), "Wilgar Rolpik (225)"))
+	end)
+
+	it("s'ajoute aux autres blocs, séparé par une ligne vide", function()
+		-- 2454 est créé par une recette : bloc « craftable » puis « désenchantement »
+		local t = textes(ns.Infobulles.lignes(ctx, 2454))
+		assert.are.equal("Compagnons", t[1])
+		local vide
+		for i, x in ipairs(t) do if x == " " then vide = i end end
+		assert.is_not_nil(vide)
+		assert.are.equal("Compagnons · désenchantement", t[vide + 1])
 	end)
 end)

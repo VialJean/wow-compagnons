@@ -24,7 +24,8 @@ local defauts = {
 	profile = {
 		debug = false,
 		minimap = { hide = false },
-		infobulles = { objet = true, composant = true, personne = false, commander = "ctrlmaj" },
+		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
+			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},
 }
 

@@ -303,15 +303,81 @@ function Infobulles.composant(ctx, itemID)
 	return lignes
 end
 
---- Toutes les lignes d'un objet : bloc « objet craftable », puis bloc « composant », séparés par une ligne vide.
+-- ---------------------------------------------------------------------------------------------
+-- Désenchantement
+-- ---------------------------------------------------------------------------------------------
+
+local MAX_ENCHANTEURS = 4
+
+--- Lignes « désenchantement » pour une pièce d'équipement, ou nil si l'objet ne se désenchante pas.
+-- ctx.infoObjet(itemID) renvoie { classe, sous, qualite, niveau } ou nil (informations pas encore en cache).
+function Infobulles.desenchanter(ctx, itemID)
+	if not ctx or not ctx.options or not ctx.options.desenchantement or not ctx.catalogue or not ctx.infoObjet then
+		return nil
+	end
+	local info = ctx.infoObjet(itemID)
+	if not info then return nil end
+	if not ns.Desenchanter.tranche(ns.Desenchantement, info.classe, info.sous, info.qualite, info.niveau) then
+		return nil
+	end
+
+	local lignes = {
+		ligne(ns.L.INFO_TITRE_DESENCH, OR),
+		ligne(string.format(ns.L.INFO_DESENCH_OK, info.niveau), BLANC),
+	}
+
+	local liste = {}
+	for _, e in ipairs(ctx.catalogue:Enchanteurs()) do
+		liste[#liste + 1] = {
+			nom = e.nom, classe = e.classe, niveau = e.niveau, cle = e.cle,
+			mien = ctx.miens[e.cle] and true or false, enLigne = ctx.enLigne(e.cle) and true or false,
+		}
+	end
+	if #liste == 0 then
+		if ctx.options.aucunEnchanteur then lignes[#lignes + 1] = ligne(ns.L.INFO_AUCUN_ENCHANTEUR, GRIS) end
+		return lignes
+	end
+	-- En ligne d'abord, puis le plus haut niveau, puis le nom.
+	table.sort(liste, function(a, b)
+		if a.enLigne ~= b.enLigne then return a.enLigne end
+		if a.niveau ~= b.niveau then return a.niveau > b.niveau end
+		if a.nom ~= b.nom then return a.nom < b.nom end
+		return a.cle < b.cle
+	end)
+
+	local morceaux = {}
+	for i = 1, math.min(#liste, MAX_ENCHANTEURS) do
+		local e = liste[i]
+		local r, g, b = ctx.couleurClasse(e.classe)
+		local precisions = {}
+		if e.mien then precisions[#precisions + 1] = ns.L.INFO_TOI_COURT
+		elseif e.enLigne then precisions[#precisions + 1] = "|cff5fd068" .. ns.L.EN_LIGNE .. "|r" end
+		precisions[#precisions + 1] = tostring(e.niveau)
+		morceaux[i] = string.format("%s%s|r (%s)", hex(r, g, b), e.nom, table.concat(precisions, ", "))
+	end
+	local texte = ns.L.INFO_ENCHANTEURS .. " " .. table.concat(morceaux, ", ")
+	if #liste > MAX_ENCHANTEURS then texte = texte .. " " .. string.format(ns.L.INFO_ET_AUTRES, #liste - MAX_ENCHANTEURS) end
+	lignes[#lignes + 1] = ligne(texte, BLANC)
+	return lignes
+end
+
+--- Toutes les lignes d'un objet : « objet craftable », « composant », « désenchantement », séparés par une ligne vide.
 function Infobulles.lignes(ctx, itemID)
-	local objet = Infobulles.objet(ctx, itemID)
-	local composant = Infobulles.composant(ctx, itemID)
-	if not objet and not composant then return nil end
+	local blocs = {}
+	for _, bloc in ipairs({
+		Infobulles.objet(ctx, itemID) or false,
+		Infobulles.composant(ctx, itemID) or false,
+		Infobulles.desenchanter(ctx, itemID) or false,
+	}) do
+		if bloc then blocs[#blocs + 1] = bloc end
+	end
+	if #blocs == 0 then return nil end
+
 	local lignes = {}
-	for _, l in ipairs(objet or {}) do lignes[#lignes + 1] = l end
-	if objet and composant then lignes[#lignes + 1] = { texte = " ", r = 1, g = 1, b = 1 } end
-	for _, l in ipairs(composant or {}) do lignes[#lignes + 1] = l end
+	for i, bloc in ipairs(blocs) do
+		if i > 1 then lignes[#lignes + 1] = { texte = " ", r = 1, g = 1, b = 1 } end
+		for _, l in ipairs(bloc) do lignes[#lignes + 1] = l end
+	end
 	return lignes
 end
 

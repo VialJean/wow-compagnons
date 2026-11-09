@@ -30,9 +30,24 @@ local function couleurClasse(classe)
 	return 0.8, 0.8, 0.8
 end
 
---- Données fournies au texte des infobulles.
-function Module:Contexte()
+--- Classe, sous-classe, qualité et niveau d'objet effectif d'un objet, ou nil si le jeu ne les a pas encore en cache.
+-- `lien` (lien de l'infobulle) donne le niveau effectif, qui tient compte des améliorations.
+local function informationsObjet(itemID, lien)
+	local lire = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+	if not lire then return nil end
+	-- 1 nom, 2 lien, 3 qualité, 4 niveau d'objet, 5 niveau requis, 6 type, 7 sous-type, 8 pile, 9 emplacement,
+	-- 10 icône, 11 prix, 12 classe, 13 sous-classe
+	local nom, lienObjet, qualite, niveau, _, _, _, _, _, _, _, classe, sous = lire(lien or itemID)
+	if not nom or not classe then return nil end
+	local effectif = C_Item and C_Item.GetDetailedItemLevelInfo and C_Item.GetDetailedItemLevelInfo(lien or lienObjet)
+	if type(effectif) == "number" and effectif > 0 then niveau = effectif end
+	return { classe = classe, sous = sous, qualite = qualite, niveau = niveau }
+end
+
+--- Données fournies au texte des infobulles. `lien` : lien de l'objet survolé, s'il est connu.
+function Module:Contexte(lien)
 	return {
+		infoObjet = function(itemID) return informationsObjet(itemID, lien) end,
 		catalogue = ns.catalogue,
 		commandes = ns.db.global.commandes,
 		miens = ns.Atelier:Miens(),
@@ -91,7 +106,7 @@ function Module:Ajouter(infobulle, data)
 	if not itemID or not ns.catalogue or not ns.Atelier then return end
 	if infobulle.cpgAjoute == itemID then return end -- jamais en double
 
-	local lignes = ns.Infobulles.lignes(self:Contexte(), itemID)
+	local lignes = ns.Infobulles.lignes(self:Contexte(data.hyperlink), itemID)
 	if not lignes then return end
 	infobulle.cpgAjoute = itemID
 	infobulle:AddLine(" ")
@@ -161,12 +176,14 @@ local function etat(v) return v and L.INFO_ACTIVE or L.INFO_DESACTIVE end
 function Module:Commande(option, valeur)
 	local reglages = ns.db.profile.infobulles
 	option = option and option:lower() or ""
-	if option == "objet" or option == "composant" or option == "personne" then
+	if option == "objet" or option == "composant" or option == "personne" or option == "desenchantement" then
 		reglages[option] = not reglages[option]
+	elseif option == "enchanteur" then
+		reglages.aucunEnchanteur = not reglages.aucunEnchanteur
 	elseif option == "commander" then
 		valeur = valeur and valeur:lower() or ""
 		if valeur == "ctrlmaj" or valeur == "maj" or valeur == "aucune" then reglages.commander = valeur end
 	end
 	Compagnons:Print(string.format(L.INFO_ETAT, etat(reglages.objet), etat(reglages.composant),
-		etat(reglages.personne), reglages.commander))
+		etat(reglages.personne), etat(reglages.desenchantement), etat(reglages.aucunEnchanteur), reglages.commander))
 end
