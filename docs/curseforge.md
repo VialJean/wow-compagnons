@@ -17,6 +17,7 @@ Find out who in your guild can craft what, without asking in chat.
 - **Search by recipe or reagent:** accent-insensitive. Type "terrestrine" and see every recipe that uses it.
 - **Who can craft it:** guildmates who know the recipe, shown in class colours with their online status. Filter by "craftable in the guild", "crafter online" or "nobody knows it".
 - **Profession window panel:** a panel attached to the game's profession window shows who else can craft the selected recipe.
+- **Crafting orders:** order a recipe from the browser (quantity, a specific crafter or anyone, who supplies the reagents, a note). Crafters see the orders they can fill and take them, mark materials received, finish or release them. Only the client can cancel and only the assigned crafter can advance an order. Alerts never appear in combat.
 - **Automatic sync:** open a profession once and your known recipes are shared with guildmates who also run the addon. It uses the addon channel, so there is no website, account or server.
 
 **Getting started**
@@ -27,7 +28,8 @@ Find out who in your guild can craft what, without asking in chat.
 **Notes**
 - Every guild member who wants to share or see recipes needs the addon. Trial accounts cannot send addon messages.
 - Your data stays in your own SavedVariables. Nothing leaves the game.
-- Crafting orders are planned next, followed by an optional read-only Discord bridge.
+- An optional read-only Discord bridge is planned.
+- Version 0.2 changes the sync protocol: guildmates must all update to see each other's data.
 
 **Commands**
 - `/cpg`: open or close the workshop

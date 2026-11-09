@@ -104,6 +104,7 @@ function Fenetre:OnEnable()
 	self.metier = nil
 	self.onglet = 1
 	self:RegisterMessage("COMPAGNONS_CATALOGUE_MAJ", "SurMiseAJour")
+	self:RegisterMessage("COMPAGNONS_COMMANDES_MAJ", "SurCommandes")
 end
 
 function Fenetre:SurMiseAJour()
@@ -155,6 +156,7 @@ function Fenetre:Creer()
 	securise("liste des métiers", self.CreerMetiers, self, f)
 	securise("détail", self.CreerDetail, self, f)
 	securise("liste des recettes", self.CreerRecettes, self, f)
+	securise("tableau des commandes", self.CreerCommandes, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
 
 	f.pied = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -395,17 +397,10 @@ function Fenetre:CreerDetail(f)
 	d.commander:SetSize(LARGEUR_DETAIL - 28, 26)
 	d.commander:SetPoint("BOTTOM", cadre, "BOTTOM", 0, 12)
 	d.commander:SetText(L.COMMANDER)
-	d.commander:Disable() -- activé au sprint « commandes »
-	d.commander:SetScript("OnEnter", function(bouton)
-		if GameTooltip then
-			GameTooltip:SetOwner(bouton, "ANCHOR_TOP")
-			GameTooltip:SetText(L.COMMANDES_BIENTOT)
-			GameTooltip:Show()
-		end
+	d.commander:SetScript("OnClick", function()
+		if self.selection then ns.Dialogue:Ouvrir(self.selection) end
 	end)
-	d.commander:SetScript("OnLeave", function()
-		if GameTooltip then GameTooltip:Hide() end
-	end)
+	self.boutonCommander = d.commander
 end
 
 function Fenetre:CreerOnglets(f)
@@ -425,12 +420,6 @@ function Fenetre:CreerOnglets(f)
 		self.onglets[i] = onglet
 	end
 
-	-- L'onglet Commandes arrive avec le sprint suivant : on affiche un message à la place du navigateur.
-	f.avenir = f:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
-	f.avenir:SetPoint("CENTER", f, "CENTER", 0, -10)
-	f.avenir:SetText(L.COMMANDES_BIENTOT)
-	f.avenir:Hide()
-
 	self:ChoisirOnglet(1)
 end
 
@@ -448,7 +437,23 @@ function Fenetre:ChoisirOnglet(numero)
 		region:SetShown(recettes)
 	end
 	self.cadre.nbResultats:SetShown(recettes)
-	self.cadre.avenir:SetShown(not recettes)
+	if self.vueCommandes then self.vueCommandes:SetShown(not recettes) end
+	if recettes then self:Rafraichir() else self:RafraichirCommandes() end
+end
+
+--- Libellé de l'onglet Commandes, avec le nombre de commandes que l'on peut remplir.
+function Fenetre:ActualiserLibelleOnglets()
+	local onglet = self.onglets and self.onglets[2]
+	if not onglet or not ns.Atelier or not ns.catalogue then return end
+	local n = ns.Atelier:CompterPourMoi()
+	onglet:SetText(n > 0 and string.format("%s (%d)", L.ONGLET_COMMANDES, n) or L.ONGLET_COMMANDES)
+	if PanelTemplates_TabResize then securise("onglet", PanelTemplates_TabResize, onglet, 0) end
+end
+
+function Fenetre:SurCommandes()
+	if not self.cadre then return end
+	self:ActualiserLibelleOnglets()
+	if self.cadre:IsShown() and self.onglet == 2 then self:RafraichirCommandes() end
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -506,6 +511,7 @@ function Fenetre:Rafraichir()
 	local nbPersos = 0
 	for _ in pairs(ns.db.global.personnages) do nbPersos = nbPersos + 1 end
 	self.cadre.pied:SetText(string.format(L.PIED, donnees.build or "?", nbPersos))
+	self:ActualiserLibelleOnglets()
 end
 
 function Fenetre:Selectionner(spellID)

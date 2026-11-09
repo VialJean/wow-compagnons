@@ -8,7 +8,8 @@ local Panneau = Compagnons:NewModule("PanneauMetier", "AceEvent-3.0")
 ns.PanneauMetier = Panneau
 
 local TS = C_TradeSkillUI
-local MAX_CRAFTEURS = 6
+local MAX_CRAFTEURS = 5
+local MAX_CARTES = 3
 local DELAI_OUVERTURE = 0.4
 local PERIODE_SUIVI = 0.4
 
@@ -25,6 +26,7 @@ function Panneau:OnEnable()
 	self:RegisterEvent("TRADE_SKILL_SHOW", "SurOuverture")
 	self:RegisterEvent("TRADE_SKILL_CLOSE", "SurFermeture")
 	self:RegisterMessage("COMPAGNONS_CATALOGUE_MAJ", "Actualiser")
+	self:RegisterMessage("COMPAGNONS_COMMANDES_MAJ", "Actualiser")
 end
 
 --- Fenêtre de métier du jeu : interface moderne (ProfessionsFrame) ou ancienne (TradeSkillFrame).
@@ -67,7 +69,7 @@ end
 
 function Panneau:Creer()
 	local f = CreateFrame("Frame", "CompagnonsPanneauMetier", UIParent, "BackdropTemplate")
-	f:SetSize(260, 300)
+	f:SetSize(260, 430)
 	f:SetFrameStrata("HIGH")
 	f:SetBackdrop({
 		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -105,13 +107,51 @@ function Panneau:Creer()
 	f.aucun:SetText(L.PERSONNE_CONNAIT)
 
 	f.bilan = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.bilan:SetPoint("BOTTOMLEFT", 14, 52)
+	f.bilan:SetPoint("BOTTOMLEFT", 14, 40)
 	f.bilan:SetPoint("RIGHT", f, "RIGHT", -14, 0)
 	f.bilan:SetJustifyH("LEFT")
 
-	f.commandes = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	f.commandes:SetPoint("BOTTOMLEFT", 14, 38)
-	f.commandes:SetText(L.COMMANDES_BIENTOT)
+	-- Commandes du métier : celles que l'on peut remplir, et celles que l'on a prises.
+	f.titreCommandes = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	f.titreCommandes:SetPoint("TOPLEFT", f.sousTitre, "BOTTOMLEFT", 0, -10 - MAX_CRAFTEURS * 16)
+	f.titreCommandes:SetText(L.PANNEAU_COMMANDES)
+	f.aucuneCommande = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	f.aucuneCommande:SetPoint("TOPLEFT", f.titreCommandes, "BOTTOMLEFT", 0, -4)
+	f.aucuneCommande:SetText(L.PANNEAU_AUCUNE_COMMANDE)
+
+	f.cartes = {}
+	for i = 1, MAX_CARTES do
+		local carte = CreateFrame("Frame", nil, f, "BackdropTemplate")
+		carte:SetHeight(62)
+		carte:SetPoint("TOPLEFT", f.titreCommandes, "BOTTOMLEFT", 0, -4 - (i - 1) * 66)
+		carte:SetPoint("RIGHT", f, "RIGHT", -14, 0)
+		carte:SetBackdrop({
+			bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			edgeSize = 12,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
+		})
+		carte:SetBackdropColor(0.13, 0.11, 0.08, 0.95)
+		carte:SetBackdropBorderColor(0.54, 0.45, 0.25, 1)
+		carte.titre = carte:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		carte.titre:SetPoint("TOPLEFT", 8, -7)
+		carte.titre:SetPoint("RIGHT", carte, "RIGHT", -8, 0)
+		carte.titre:SetJustifyH("LEFT")
+		carte.meta = carte:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		carte.meta:SetPoint("TOPLEFT", carte.titre, "BOTTOMLEFT", 0, -2)
+		carte.meta:SetPoint("RIGHT", carte, "RIGHT", -8, 0)
+		carte.meta:SetJustifyH("LEFT")
+		carte.bouton = CreateFrame("Button", nil, carte, "UIPanelButtonTemplate")
+		carte.bouton:SetSize(120, 20)
+		carte.bouton:SetPoint("BOTTOMRIGHT", -6, 5)
+		carte.bouton:SetScript("OnClick", function(b)
+			if not (b.action and carte.commande) then return end
+			local _, erreur = ns.Atelier:Agir(carte.commande, b.action)
+			if erreur then Compagnons:Print(erreur) end
+		end)
+		carte:Hide()
+		f.cartes[i] = carte
+	end
 
 	f.ouvrir = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	f.ouvrir:SetSize(232, 24)
@@ -166,6 +206,45 @@ function Panneau:ArreterSuivi()
 	end
 end
 
+--- Cartes de commandes du métier affiché (jusqu'à trois), avec l'action principale sur chaque carte.
+function Panneau:ActualiserCommandes(idMetier)
+	local f = self.cadre
+	local liste = idMetier and ns.Atelier:PourMetier(idMetier) or {}
+	local miens = ns.Atelier:Miens()
+	for i = 1, MAX_CARTES do
+		local carte, o = f.cartes[i], liste[i]
+		if o then
+			local recette = ns.Recettes.recettes[o.spell]
+			carte.commande = o
+			carte.titre:SetText(string.format("%d × %s", o.qte, recette and recette.nom or "?"))
+			local libelle, couleur = ns.Atelier.LibelleStatut(o)
+			local qui = miens[o.client] and L.PAR_CLIENT or o.client
+			carte.meta:SetText(string.format("%s · |c%s%s|r", qui, couleur, libelle))
+
+			-- Action principale disponible, sinon pas de bouton.
+			local principale
+			for _, a in ipairs(ns.Atelier:ActionsPossibles(o)) do
+				if a.principale then principale = a break end
+			end
+			if principale then
+				carte.bouton.action = principale.action
+				carte.bouton:SetText(principale.libelle)
+				carte.bouton:SetEnabled(principale.raison == nil)
+				carte.bouton:Show()
+			else
+				carte.bouton.action = nil
+				carte.bouton:Hide()
+			end
+			carte:Show()
+		else
+			carte.commande = nil
+			carte:Hide()
+		end
+	end
+	f.aucuneCommande:SetShown(#liste == 0)
+	f.titreCommandes:SetText(string.format(L.PANNEAU_COMMANDES, #liste))
+end
+
 function Panneau:Actualiser()
 	local f = self.cadre
 	if not f or not f:IsShown() or not ns.catalogue then return end
@@ -206,6 +285,8 @@ function Panneau:Actualiser()
 		end
 		f.aucun:SetShown(#crafteurs == 0)
 	end
+
+	self:ActualiserCommandes(idMetier)
 
 	if idMetier then
 		local total, connues = 0, 0

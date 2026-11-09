@@ -34,6 +34,7 @@ read_globals = {
 	"ITEM_QUALITY_COLORS", "RAID_CLASS_COLORS",
 	"C_Item", "C_Spell", "GetItemIcon", "GetSpellTexture", "GetItemCount",
 	"ProfessionsFrame", "TradeSkillFrame",
+	"ButtonFrameTemplate_HidePortrait", "InCombatLockdown",
 }
 
 files["tests/"] = { std = "+busted" }

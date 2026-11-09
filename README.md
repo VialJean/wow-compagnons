@@ -24,9 +24,9 @@ Requirements: a full (not trial) account, and a guild. Trial accounts cannot sen
 
 ## État
 
-Version 0.1 (bêta) : navigateur de recettes, panneau dans la fenêtre de métier, bouton de minicarte,
-synchronisation des profils de guilde. À venir : commandes et tableau des commandes, puis le Relais
-et le bot Discord.
+Version 0.2 (bêta) : navigateur de recettes, commandes de craft (création, tableau, prise, libération,
+annulation), panneau dans la fenêtre de métier, alertes, bouton de minicarte, synchronisation des profils
+et des commandes de guilde. À venir : le Relais et le bot Discord.
 
 ## Commandes
 

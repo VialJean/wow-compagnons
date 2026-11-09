@@ -29,7 +29,11 @@ Data\Recettes.lua
 Modules\Scanner.lua
 Modules\Diagnostic.lua
 Modules\Reseau.lua
+Modules\Atelier.lua
 
 UI\Fenetre.lua
+UI\OngletCommandes.lua
+UI\DialogueCommande.lua
 UI\PanneauMetier.lua
+UI\Alertes.lua
 UI\Minicarte.lua
