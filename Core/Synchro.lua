@@ -1,42 +1,51 @@
--- Moteur de synchronisation des profils de guilde. Lua pur : le transport, l'horloge et les
--- temporisations sont fournis de l'extérieur, ce qui permet de le tester avec des dizaines de clients simulés.
+-- Moteur de synchronisation de guilde : profils des personnages et commandes de craft.
+-- Lua pur : le transport, l'horloge et les temporisations sont fournis de l'extérieur, ce qui permet de
+-- le tester avec des dizaines de clients simulés.
 --
 -- Messages (voir docs/protocole.md) :
 --   HELLO        GUILD    { v, h, n }              annonce : hash global et nombre de profils
 --   PRET         WHISPER  { v, h }                 un pair dont le hash diffère se propose (minuscule)
---   HASHES       WHISPER  { v, liste = { [cle] = { maj, hash } } }   envoyé par l'annonceur au premier pair prêt
---   PROFILE_REQ  WHISPER  { cles = { cle, ... } }  profils demandés
---   PROFILE      WHISPER  { profil }               un profil transmis à un seul membre
---   PROFILE_UPD  GUILD    { profil }               un profil vient de changer (scan)
+--   HASHES       WHISPER  { v, liste = { p = { [cle] = { maj, hash } }, c = { [id] = { rev, maj, par, hash } } } }
+--                                                  envoyé par l'annonceur au premier pair prêt
+--   PROFILE_REQ  WHISPER  { v, cles = {...}, ids = {...} }   profils et commandes demandés
+--   PROFILE      WHISPER  { v, profil }            un profil transmis pendant une synchro
+--   ORDER        WHISPER  { v, commande }          une commande transmise pendant une synchro
+--   PROFILE_UPD  GUILD    { v, profil }            un personnage vient d'être scanné
+--   ORDER_NEW    GUILD    { v, commande }          une commande vient d'être créée
+--   ORDER_UPD    GUILD    { v, commande }          une commande vient de changer d'état
 local _, ns = ...
 
 local Synchro = {}
 Synchro.__index = Synchro
 ns.Synchro = Synchro
 
-Synchro.PROTOCOLE = 1
+Synchro.PROTOCOLE = 2
 
 local FENETRE_PARTENAIRE = 20 -- secondes pendant lesquelles on ne synchronise qu'avec un seul pair
 local DELAI_REPONSE = 2       -- les pairs répondent après un délai aléatoire borné par cette valeur
 local DELAI_REANNONCE = 5     -- regroupe plusieurs changements en une seule annonce
-local MAX_CLES_DEMANDEES = 400
+local MAX_DEMANDES = 400
+local MAX_COMMANDES = 600     -- au-delà, les nouvelles commandes reçues sont ignorées
 
 --- options :
 --   donnees       ns.Recettes
 --   profils       table cle -> profil (tous les profils connus, y compris les nôtres)
+--   commandes     table id -> commande
 --   moi           fonction -> clé du personnage connecté
---   proprietaire  fonction(cle) -> vrai si le personnage est à nous (le réseau ne peut pas l'écraser)
---   envoyer       fonction(canal, cible, type, charge)   canal = "GUILD" | "WHISPER"
+--   proprietaire  fonction(cle) -> vrai si le personnage est à nous (le réseau ne peut pas écraser son profil)
+--   envoyer       fonction(canal, cible, genre, charge)   canal = "GUILD" | "WHISPER"
 --   maintenant    fonction -> secondes
 --   planifier     fonction(delai, fn)
 --   alea          fonction -> nombre dans [0, 1[
 --   normaliser    fonction(expéditeur brut) -> clé (par défaut : « Prénom-Nom » devient « Prénom Nom »)
 --   surMaj        fonction(cle) appelée quand un profil est modifié depuis le réseau
+--   surCommande   fonction(id, avant, apres) appelée quand une commande change depuis le réseau
 --   journal       fonction(niveau, format, ...)
 function Synchro.nouveau(o)
 	local s = setmetatable({}, Synchro)
 	s.donnees = o.donnees
 	s.profils = o.profils
+	s.commandes = o.commandes or {}
 	s.moi = o.moi
 	s.proprietaire = o.proprietaire or function() return false end
 	s.envoyerBrut = o.envoyer
@@ -45,10 +54,11 @@ function Synchro.nouveau(o)
 	s.alea = o.alea or math.random
 	s.normaliser = o.normaliser or function(brut) return (brut:gsub("%-", " ")) end
 	s.surMaj = o.surMaj or function() end
+	s.surCommande = o.surCommande or function() end
 	s.journal = o.journal or function() end
 	s.partenaire = nil
 	s.partenaireJusqua = 0
-	s.reponduA = {}      -- [expéditeur] = hash global au moment où l'on a répondu
+	s.reponduA = {}      -- [expéditeur] = état auquel on a déjà répondu
 	s.annoncePrevue = false
 	s.stats = { envoyes = 0, recus = 0, parGenre = {} }
 	return s
@@ -60,20 +70,37 @@ function Synchro:Envoyer(canal, cible, genre, charge)
 	self.envoyerBrut(canal, cible, genre, charge)
 end
 
---- Hash global : somme de contrôle de la liste triée « clé:hash ».
+--- Hash global : somme de contrôle des listes triées « clé:hash » des profils et des commandes.
 function Synchro:HashGlobal()
-	local cles = {}
-	for cle in pairs(self.profils) do cles[#cles + 1] = cle end
-	table.sort(cles)
-	local morceaux = {}
-	for i, cle in ipairs(cles) do morceaux[i] = cle .. ":" .. self.profils[cle].hash end
-	return ns.Profil.adler(table.concat(morceaux, ";"))
+	local function liste(table_)
+		local cles = {}
+		for cle in pairs(table_) do cles[#cles + 1] = cle end
+		table.sort(cles)
+		local morceaux = {}
+		for i, cle in ipairs(cles) do morceaux[i] = cle .. ":" .. table_[cle].hash end
+		return table.concat(morceaux, ";")
+	end
+	return ns.Profil.adler(liste(self.profils) .. "|" .. liste(self.commandes))
 end
 
 function Synchro:Compter()
 	local n = 0
 	for _ in pairs(self.profils) do n = n + 1 end
 	return n
+end
+
+function Synchro:CompterCommandes()
+	local n = 0
+	for _ in pairs(self.commandes) do n = n + 1 end
+	return n
+end
+
+--- Oublie les commandes terminées ou annulées depuis plus de 7 jours. Tous les clients appliquent la même règle.
+function Synchro:Nettoyer()
+	local maintenant = self.maintenant()
+	for id, c in pairs(self.commandes) do
+		if ns.Commandes.perimee(c, maintenant) then self.commandes[id] = nil end
+	end
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -85,6 +112,7 @@ function Synchro:Annoncer()
 	self.annoncePrevue = false
 	self.partenaire = nil -- nouvelle ronde : on peut de nouveau choisir un partenaire
 	self.partenaireJusqua = 0
+	self:Nettoyer()
 	self:Envoyer("GUILD", nil, "HELLO", { v = Synchro.PROTOCOLE, h = self:HashGlobal(), n = self:Compter() })
 end
 
@@ -103,6 +131,27 @@ function Synchro:Publier(profil)
 	self.profils[p.cle] = p
 	self:Envoyer("GUILD", nil, "PROFILE_UPD", { v = Synchro.PROTOCOLE, profil = p })
 	return true
+end
+
+--- Crée une commande de notre part et la diffuse. options : voir Commandes.nouvelle.
+function Synchro:CreerCommande(options)
+	options.maintenant = options.maintenant or self.maintenant()
+	local c = ns.Commandes.nouvelle(options)
+	self.commandes[c.id] = c
+	self:Envoyer("GUILD", nil, "ORDER_NEW", { v = Synchro.PROTOCOLE, commande = c })
+	return c
+end
+
+--- Fait avancer une commande (prendre, mats, terminer, liberer, annuler) au nom du personnage `par`.
+-- Renvoie la nouvelle commande, ou nil et la raison.
+function Synchro:AgirCommande(id, action, par)
+	local actuelle = self.commandes[id]
+	if not actuelle then return nil, "inconnue" end
+	local nouvelle, erreur = ns.Commandes.appliquer(actuelle, action, par, self.maintenant())
+	if not nouvelle then return nil, erreur end
+	self.commandes[id] = nouvelle
+	self:Envoyer("GUILD", nil, "ORDER_UPD", { v = Synchro.PROTOCOLE, commande = nouvelle })
+	return nouvelle
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -124,14 +173,46 @@ function Synchro:Integrer(brut)
 	return true
 end
 
-local GENRES = { HELLO = true, PRET = true, HASHES = true, PROFILE_REQ = true, PROFILE = true, PROFILE_UPD = true }
+--- Intègre une commande venue du réseau. Renvoie vrai si elle a modifié notre copie.
+function Synchro:IntegrerCommande(brut)
+	local c = ns.Commandes.valider(brut, self.donnees)
+	if not c then
+		self.journal("warn", "commande reçue invalide, ignorée")
+		return false
+	end
+	if ns.Commandes.perimee(c, self.maintenant()) then return false end
+
+	local actuelle = self.commandes[c.id]
+	if actuelle then
+		if not ns.Commandes.meilleure(c, actuelle) then return false end
+		-- Une seule révision d'écart : la transition doit être permise à son auteur.
+		if c.rev == actuelle.rev + 1 and not ns.Commandes.transitionLegale(actuelle, c) then
+			self.journal("warn", "transition interdite refusée sur %s (%s -> %s par %s)",
+				c.id, actuelle.statut, c.statut, tostring(c.par))
+			return false
+		end
+	else
+		if self:CompterCommandes() >= MAX_COMMANDES then return false end
+		-- Une commande neuve doit être créée par son client.
+		if c.rev == 0 and (c.statut ~= "ouverte" or c.par ~= c.client) then return false end
+	end
+
+	self.commandes[c.id] = c
+	self.surCommande(c.id, actuelle, c)
+	return true
+end
+
+local GENRES = {
+	HELLO = true, PRET = true, HASHES = true, PROFILE_REQ = true,
+	PROFILE = true, PROFILE_UPD = true, ORDER = true, ORDER_NEW = true, ORDER_UPD = true,
+}
 
 function Synchro:Recevoir(genre, charge, expediteur)
 	if type(expediteur) ~= "string" or not GENRES[genre] or type(charge) ~= "table" then return end
 	if self.normaliser(expediteur) == self.moi() then return end
 	self.stats.recus = self.stats.recus + 1
 
-	if charge.v ~= nil and charge.v ~= Synchro.PROTOCOLE then
+	if charge.v ~= Synchro.PROTOCOLE then
 		self.journal("warn", "protocole %s ignoré (attendu %d)", tostring(charge.v), Synchro.PROTOCOLE)
 		return
 	end
@@ -147,9 +228,13 @@ function Synchro:Recevoir(genre, charge, expediteur)
 	elseif genre == "PROFILE" then
 		-- Reçu pendant une synchro : d'autres pairs peuvent ne pas l'avoir, on se ré-annonce.
 		if self:Integrer(charge.profil) then self:ProgrammerAnnonce() end
+	elseif genre == "ORDER" then
+		if self:IntegrerCommande(charge.commande) then self:ProgrammerAnnonce() end
 	elseif genre == "PROFILE_UPD" then
 		-- Diffusé à toute la guilde en même temps : inutile de le répéter.
 		self:Integrer(charge.profil)
+	else -- ORDER_NEW, ORDER_UPD
+		self:IntegrerCommande(charge.commande)
 	end
 end
 
@@ -180,49 +265,78 @@ function Synchro:SurPret(_, expediteur)
 	end
 	self.partenaire = expediteur
 	self.partenaireJusqua = maintenant + FENETRE_PARTENAIRE
-	local liste = {}
-	for cle, p in pairs(self.profils) do liste[cle] = { p.maj, p.hash } end
-	self:Envoyer("WHISPER", expediteur, "HASHES", { v = Synchro.PROTOCOLE, liste = liste })
+	local p, c = {}, {}
+	for cle, profil in pairs(self.profils) do p[cle] = { profil.maj, profil.hash } end
+	for id, o in pairs(self.commandes) do c[id] = { o.rev, o.maj, o.par, o.hash } end
+	self:Envoyer("WHISPER", expediteur, "HASHES", { v = Synchro.PROTOCOLE, liste = { p = p, c = c } })
 end
 
---- On reçoit la liste de hashes d'un pair : on lui demande ce qui est plus récent chez lui
--- et on lui envoie ce qui est plus récent chez nous.
-function Synchro:SurHashes(charge, expediteur)
-	if type(charge.liste) ~= "table" then return end
+local function nombre(v) return type(v) == "number" end
 
-	local demande = {}
-	for cle, info in pairs(charge.liste) do
-		if type(cle) == "string" and type(info) == "table" and not self.proprietaire(cle) then
+--- On reçoit la liste de hashes d'un pair : on lui demande ce qui est meilleur chez lui
+-- et on lui envoie ce qui est meilleur chez nous.
+function Synchro:SurHashes(charge, expediteur)
+	local liste = charge.liste
+	if type(liste) ~= "table" then return end
+	local distantsP = type(liste.p) == "table" and liste.p or {}
+	local distantsC = type(liste.c) == "table" and liste.c or {}
+
+	local demandeP, demandeC = {}, {}
+	for cle, info in pairs(distantsP) do
+		if type(cle) == "string" and type(info) == "table" and nombre(info[1]) and nombre(info[2])
+			and not self.proprietaire(cle) then
 			local local_ = self.profils[cle]
-			local distant = { maj = info[1], hash = info[2] }
-			if type(distant.maj) == "number" and type(distant.hash) == "number" then
-				if not local_ or ns.Profil.plusRecent(distant, local_) then
-					if #demande < MAX_CLES_DEMANDEES then demande[#demande + 1] = cle end
-				end
+			if not local_ or ns.Profil.plusRecent({ maj = info[1], hash = info[2] }, local_) then
+				if #demandeP < MAX_DEMANDES then demandeP[#demandeP + 1] = cle end
 			end
 		end
 	end
-	if #demande > 0 then
-		self:Envoyer("WHISPER", expediteur, "PROFILE_REQ", { v = Synchro.PROTOCOLE, cles = demande })
+	for id, info in pairs(distantsC) do
+		if type(id) == "string" and type(info) == "table" and nombre(info[1]) and nombre(info[2]) and nombre(info[4]) then
+			local local_ = self.commandes[id]
+			local distant = { rev = info[1], maj = info[2], par = info[3], hash = info[4] }
+			if not local_ or ns.Commandes.meilleure(distant, local_) then
+				if #demandeC < MAX_DEMANDES then demandeC[#demandeC + 1] = id end
+			end
+		end
+	end
+	if #demandeP > 0 or #demandeC > 0 then
+		self:Envoyer("WHISPER", expediteur, "PROFILE_REQ", { v = Synchro.PROTOCOLE, cles = demandeP, ids = demandeC })
 	end
 
-	-- Ce que le pair n'a pas, ou a en version plus ancienne : on le lui envoie.
+	-- Ce que le pair n'a pas, ou a en moins bonne version : on le lui envoie.
 	for cle, p in pairs(self.profils) do
-		local info = charge.liste[cle]
+		local info = distantsP[cle]
 		local pousser = info == nil
-		if not pousser and type(info) == "table" and type(info[1]) == "number" and type(info[2]) == "number" then
+		if not pousser and type(info) == "table" and nombre(info[1]) and nombre(info[2]) then
 			pousser = ns.Profil.plusRecent(p, { maj = info[1], hash = info[2] })
 		end
 		if pousser then self:Envoyer("WHISPER", expediteur, "PROFILE", { v = Synchro.PROTOCOLE, profil = p }) end
 	end
+	for id, c in pairs(self.commandes) do
+		local info = distantsC[id]
+		local pousser = info == nil
+		if not pousser and type(info) == "table" and nombre(info[1]) and nombre(info[2]) and nombre(info[4]) then
+			pousser = ns.Commandes.meilleure(c, { rev = info[1], maj = info[2], par = info[3], hash = info[4] })
+		end
+		if pousser then self:Envoyer("WHISPER", expediteur, "ORDER", { v = Synchro.PROTOCOLE, commande = c }) end
+	end
 end
 
 function Synchro:SurDemande(charge, expediteur)
-	if type(charge.cles) ~= "table" then return end
-	for i, cle in ipairs(charge.cles) do
-		if i > MAX_CLES_DEMANDEES then break end
-		local p = type(cle) == "string" and self.profils[cle]
-		if p then self:Envoyer("WHISPER", expediteur, "PROFILE", { v = Synchro.PROTOCOLE, profil = p }) end
+	if type(charge.cles) == "table" then
+		for i, cle in ipairs(charge.cles) do
+			if i > MAX_DEMANDES then break end
+			local p = type(cle) == "string" and self.profils[cle]
+			if p then self:Envoyer("WHISPER", expediteur, "PROFILE", { v = Synchro.PROTOCOLE, profil = p }) end
+		end
+	end
+	if type(charge.ids) == "table" then
+		for i, id in ipairs(charge.ids) do
+			if i > MAX_DEMANDES then break end
+			local c = type(id) == "string" and self.commandes[id]
+			if c then self:Envoyer("WHISPER", expediteur, "ORDER", { v = Synchro.PROTOCOLE, commande = c }) end
+		end
 	end
 end
 

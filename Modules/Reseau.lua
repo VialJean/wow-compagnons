@@ -56,6 +56,7 @@ function Reseau:OnEnable()
 	self.moteur = ns.Synchro.nouveau({
 		donnees = ns.Recettes,
 		profils = ns.db.global.guilde,
+		commandes = ns.db.global.commandes,
 		moi = ns.clePersonnage,
 		proprietaire = function(cle) return ns.db.global.personnages[cle] ~= nil end,
 		envoyer = function(canal, cible, genre, charge) self:Envoyer(canal, cible, genre, charge) end,
@@ -63,6 +64,9 @@ function Reseau:OnEnable()
 		planifier = C_Timer.After,
 		alea = math.random,
 		surMaj = function() self:ProgrammerMajCatalogue() end,
+		surCommande = function(id, avant, apres)
+			Compagnons:SendMessage("COMPAGNONS_COMMANDE_RECUE", id, avant, apres)
+		end,
 		journal = function(niveau, fmt, ...) ns.log(niveau, "sync", fmt, ...) end,
 	})
 
@@ -192,5 +196,6 @@ function Reseau:Etat(action)
 	end
 	local enLigne = 0
 	for _ in pairs(self.enLigne) do enLigne = enLigne + 1 end
-	Compagnons:Print(string.format(L.SYNC_ETAT, m:Compter(), m:HashGlobal(), m.stats.envoyes, m.stats.recus, enLigne))
+	Compagnons:Print(string.format(L.SYNC_ETAT, m:Compter(), m:CompterCommandes(), m:HashGlobal(),
+		m.stats.envoyes, m.stats.recus, enLigne))
 end

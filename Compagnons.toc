@@ -20,6 +20,7 @@ Core\Init.lua
 Core\Bitset.lua
 Core\Catalogue.lua
 Core\Profil.lua
+Core\Commandes.lua
 Core\Synchro.lua
 Debug\Log.lua
 

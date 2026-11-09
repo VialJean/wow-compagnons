@@ -47,7 +47,7 @@ L.PIED = "Base de recettes du build %s · %d personnage(s) scanné(s)"
 
 -- Synchro
 L.AIDE_SYNC = "/cpg sync [annonce] : état de la synchro de guilde (ou force une annonce)"
-L.SYNC_ETAT = "Synchro : %d profils, hash %d, %d messages envoyés, %d reçus, %d membres en ligne."
+L.SYNC_ETAT = "Synchro : %d profils, %d commandes, hash %d, %d messages envoyés, %d reçus, %d membres en ligne."
 L.SYNC_ANNONCE = "Annonce envoyée à la guilde."
 
 -- Minicarte
