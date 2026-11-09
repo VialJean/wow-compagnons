@@ -19,12 +19,25 @@ local ACCENTS = {
 	["ù"] = "u", ["û"] = "u", ["ü"] = "u", ["Ù"] = "u", ["Û"] = "u", ["Ü"] = "u",
 	["ç"] = "c", ["Ç"] = "c", ["œ"] = "oe", ["Œ"] = "oe", ["æ"] = "ae", ["Æ"] = "ae",
 	["’"] = "'",
+	-- espagnol, portugais, italien, allemand
+	["á"] = "a", ["Á"] = "a", ["ã"] = "a", ["Ã"] = "a", ["å"] = "a", ["Å"] = "a",
+	["í"] = "i", ["Í"] = "i", ["ì"] = "i", ["Ì"] = "i",
+	["ó"] = "o", ["Ó"] = "o", ["ò"] = "o", ["Ò"] = "o", ["õ"] = "o", ["Õ"] = "o", ["ø"] = "o", ["Ø"] = "o",
+	["ú"] = "u", ["Ú"] = "u",
+	["ñ"] = "n", ["Ñ"] = "n", ["ß"] = "ss", ["ÿ"] = "y", ["ý"] = "y", ["Ý"] = "y",
 }
 
 --- Minuscules sans accents.
 function Catalogue.normaliser(texte)
 	if not texte or texte == "" then return "" end
 	texte = texte:gsub("[\195\197\226][\128-\191]*", function(c) return ACCENTS[c] or c end)
+	-- Cyrillique : majuscules (U+0410 à U+042F, plus Ё) vers minuscules ; string.lower ne touche que l'ASCII.
+	texte = texte:gsub("\208([\129\144-\175])", function(b)
+		local n = b:byte()
+		if n == 129 then return "\209\145" end        -- Ё -> ё
+		if n <= 159 then return "\208" .. string.char(n + 32) end -- А-П -> а-п
+		return "\209" .. string.char(n - 32)          -- Р-Я -> р-я
+	end)
 	return texte:lower()
 end
 local normaliser = Catalogue.normaliser

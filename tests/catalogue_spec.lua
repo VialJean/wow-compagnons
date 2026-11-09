@@ -65,6 +65,22 @@ describe("Catalogue", function()
 		-- niveau 1 : « elixir » < « enchanter » < « potion »
 	end)
 
+	it("ignore aussi les accents et les majuscules des autres langues", function()
+		assert.are.equal("pocion de curacion", Catalogue.normaliser("Poción de Curación"))   -- espagnol
+		assert.are.equal("pocao", Catalogue.normaliser("POÇÃO"))                              -- portugais
+		assert.are.equal("grosse", Catalogue.normaliser("Große"))                            -- allemand : ß -> ss
+		assert.are.equal("pozione di mana", Catalogue.normaliser("Pozione di Mana"))         -- italien
+		assert.are.equal("senor", Catalogue.normaliser("Señor"))                             -- ñ -> n
+	end)
+
+	it("met le cyrillique en minuscules", function()
+		assert.are.equal("эликсир силы", Catalogue.normaliser("Эликсир Силы"))
+		assert.are.equal("ёж", Catalogue.normaliser("Ёж"))
+		assert.are.equal("яблоко", Catalogue.normaliser("ЯБЛОКО"))
+		assert.are.equal("п", Catalogue.normaliser("П")) -- borne du premier bloc
+		assert.are.equal("р", Catalogue.normaliser("Р")) -- début du second bloc
+	end)
+
 	it("cherche dans le nom, sans accent ni casse", function()
 		assert.are.same({ 2329 }, c:Chercher({ texte = "ELIXIR" }))
 		assert.are.same({ 2329 }, c:Chercher({ texte = "élixir force" }))

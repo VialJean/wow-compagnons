@@ -100,14 +100,14 @@ end
 
 function Compagnons:Commande(saisie)
 	local action, arg, arg2 = self:GetArgs(saisie, 3)
-	action = action and action:lower() or ""
+	action = ns.Alias.action(action) -- anglais ou français
 
 	if action == "" or action == "recettes" then
 		self:GetModule("Fenetre"):Basculer()
 	elseif action == "infobulles" then
 		self:GetModule("InfobullesObjet"):Commande(arg, arg2)
 	elseif action == "sync" then
-		self:GetModule("Reseau"):Etat(arg)
+		self:GetModule("Reseau"):Etat(ns.Alias.action(arg))
 	elseif action == "minicarte" then
 		self:GetModule("Minicarte"):Basculer()
 	elseif action == "debug" then
@@ -141,7 +141,7 @@ function Compagnons:AfficherPerso()
 	end
 	self:Print(perso.nom .. " (" .. (perso.classe or "?") .. ")")
 	for _, m in pairs(perso.metiers) do
-		print(string.format("  %s %d/%d : %d apprises sur %d vues, scanné le %s",
+		print(string.format(L.PERSO_LIGNE,
 			m.nom, m.niveau or 0, m.max or 0, m.nbApprises, m.nbVues,
 			date("%d/%m %H:%M", m.scanneLe)))
 	end

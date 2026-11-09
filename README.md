@@ -28,18 +28,36 @@ Version 0.2 (bêta) : navigateur de recettes, commandes de craft (création, tab
 annulation), panneau dans la fenêtre de métier, alertes, bouton de minicarte, synchronisation des profils
 et des commandes de guilde. À venir : le Relais et le bot Discord.
 
-## Commandes
+## Langues
 
-| Commande | Effet |
-|---|---|
-| `/cpg` | ouvre ou ferme l'atelier de guilde (aussi `/cpg recettes`) |
-| `/cpg minicarte` | masque ou réaffiche le bouton de la minicarte |
-| `/cpg sync [annonce]` | état de la synchro de guilde, ou force une annonce |
-| `/cpg aide` | liste des commandes |
-| `/cpg diag` | diagnostic du client (à lancer avec une fenêtre de métier ouverte) |
-| `/cpg perso` | métiers et recettes scannés pour le personnage |
-| `/cpg debug` | active ou coupe les messages de debug |
-| `/cpg journal [n]` | n dernières lignes du journal |
+L'interface et les noms du jeu suivent la langue du client : **anglais** (référence) et **français** sont livrés ; les
+autres langues s'affichent en anglais. La synchronisation échange des identifiants, jamais des noms : un joueur anglophone
+et un joueur francophone peuvent se synchroniser, chacun voit les noms dans sa langue.
+
+Les commandes existent en anglais et en français :
+
+| Commande | Alias français | Effet |
+|---|---|---|
+| `/cpg` | | ouvre ou ferme l'atelier de guilde (aussi `/cpg recipes`) |
+| `/cpg minimap` | `minicarte` | masque ou réaffiche le bouton de la minicarte |
+| `/cpg sync [announce]` | `annonce` | état de la synchro de guilde, ou force une annonce |
+| `/cpg tooltips [item\|reagent\|nobody\|disenchant\|enchanter\|order <ctrlshift\|shift\|none>]` | `infobulles` | réglages des infobulles |
+| `/cpg help` | `aide` | liste des commandes |
+| `/cpg diag` | | diagnostic du client (à lancer avec une fenêtre de métier ouverte) |
+| `/cpg char` | `perso` | métiers et recettes scannés pour le personnage |
+| `/cpg debug` | | active ou coupe les messages de debug |
+| `/cpg log [n]` | `journal` | n dernières lignes du journal |
+
+### Ajouter une langue
+
+1. Copier `Locales/frFR.lua` en `Locales/<langue>.lua` (par exemple `deDE`) et traduire les valeurs. Les clés absentes
+   retombent sur l'anglais.
+2. Ajouter le fichier au `.toc`, avant `Core\Locales.lua`, et la langue à la liste `LANGUES` de `tests/locales_spec.lua`.
+3. Pour les noms de recettes et de composants : exporter les tables du jeu dans cette langue avec wow.export, puis lancer
+   `compagnons-recettes ... --noms deDE=<dossier>` (dépôt `wow-compagnons-services`) et ajouter `Data\Noms.deDE.lua` au `.toc`.
+
+`tests/locales_spec.lua` vérifie que chaque langue a les mêmes clés que l'anglais et les mêmes `%s` / `%d`, qu'aucune clé
+n'est utilisée sans exister, et qu'aucune clé n'est inutilisée.
 
 ## Développement
 
@@ -65,7 +83,9 @@ puis CurseForge et Wago une fois les secrets `CF_API_KEY` et `WAGO_API_TOKEN` co
 
 ```
 Core/      initialisation, catalogue de recettes, profils, moteur de synchro (Lua pur, testé hors jeu)
-Data/      Recettes.lua, généré par Compagnons.Recettes (dépôt wow-compagnons-services)
+Locales/   textes de l'interface : enUS (référence), frFR
+Data/      Recettes.lua (structure), Noms.<langue>.lua, Desenchantement.lua : générés par Compagnons.Recettes
+           (dépôt wow-compagnons-services)
 Modules/   scanner, réseau (AceComm), diagnostic
 UI/        fenêtre principale, panneau de la fenêtre de métier, bouton de minicarte
 Debug/     journal, futur panneau /cpg debug

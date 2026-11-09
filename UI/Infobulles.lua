@@ -175,13 +175,13 @@ local function etat(v) return v and L.INFO_ACTIVE or L.INFO_DESACTIVE end
 --- /cpg infobulles [objet|composant|personne|commander <ctrlmaj|maj|aucune>]
 function Module:Commande(option, valeur)
 	local reglages = ns.db.profile.infobulles
-	option = option and option:lower() or ""
+	option = ns.Alias.option(option) -- anglais ou français
 	if option == "objet" or option == "composant" or option == "personne" or option == "desenchantement" then
 		reglages[option] = not reglages[option]
 	elseif option == "enchanteur" then
 		reglages.aucunEnchanteur = not reglages.aucunEnchanteur
 	elseif option == "commander" then
-		valeur = valeur and valeur:lower() or ""
+		valeur = ns.Alias.valeur(valeur)
 		if valeur == "ctrlmaj" or valeur == "maj" or valeur == "aucune" then reglages.commander = valeur end
 	end
 	Compagnons:Print(string.format(L.INFO_ETAT, etat(reglages.objet), etat(reglages.composant),

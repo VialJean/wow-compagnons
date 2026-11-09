@@ -30,10 +30,12 @@ Find out who in your guild can craft what, without asking in chat.
 - Your data stays in your own SavedVariables. Nothing leaves the game.
 - An optional read-only Discord bridge is planned.
 - Version 0.2 changes the sync protocol: guildmates must all update to see each other's data.
+- **Languages:** English and French. The interface and the recipe and reagent names follow your game client; other languages
+  currently show English. Players on different languages can sync with each other, since only IDs are exchanged.
 
 **Commands**
 - `/cpg`: open or close the workshop
-- `/cpg minicarte`: hide or show the minimap button
-- `/cpg sync`: sync status (`/cpg sync annonce` forces an announcement)
+- `/cpg minimap`: hide or show the minimap button
+- `/cpg sync`: sync status (`/cpg sync announce` forces an announcement)
 
 Open source (MIT): https://github.com/VialJean/wow-compagnons

@@ -1,10 +1,14 @@
 -- Tests hors jeu du texte des infobulles d'objet (docs/infobulles.md, §2). busted tests
 local function charger()
 	local ns = {}
-	for _, fichier in ipairs({ "Core/Locales.lua", "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua",
-		"Core/Commandes.lua", "Core/Desenchanter.lua", "Data/Desenchantement.lua", "Core/Infobulles.lua" }) do
+	-- Les assertions de ce fichier portent sur le texte français : on simule un client en frFR.
+	rawset(_G, "GetLocale", function() return "frFR" end)
+	for _, fichier in ipairs({ "Locales/enUS.lua", "Locales/frFR.lua", "Core/Locales.lua", "Core/Bitset.lua",
+		"Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Desenchanter.lua",
+		"Data/Desenchantement.lua", "Core/Infobulles.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
+	rawset(_G, "GetLocale", nil)
 	return ns
 end
 

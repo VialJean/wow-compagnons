@@ -1,0 +1,56 @@
+-- Tests hors jeu des alias de commandes /cpg (Core/Alias.lua). busted tests
+local ns = {}
+assert(loadfile("Core/Alias.lua"))("Compagnons", ns)
+local Alias = ns.Alias
+
+describe("Alias des commandes", function()
+	it("traduit les sous-commandes anglaises en noms internes", function()
+		assert.are.equal("minicarte", Alias.action("minimap"))
+		assert.are.equal("recettes", Alias.action("recipes"))
+		assert.are.equal("journal", Alias.action("log"))
+		assert.are.equal("perso", Alias.action("char"))
+		assert.are.equal("infobulles", Alias.action("tooltips"))
+		assert.are.equal("aide", Alias.action("help"))
+		assert.are.equal("annonce", Alias.action("announce"))
+	end)
+
+	it("garde les noms français et les commandes identiques dans les deux langues", function()
+		assert.are.equal("minicarte", Alias.action("minicarte"))
+		assert.are.equal("infobulles", Alias.action("infobulles"))
+		assert.are.equal("sync", Alias.action("sync"))
+		assert.are.equal("diag", Alias.action("diag"))
+		assert.are.equal("debug", Alias.action("debug"))
+	end)
+
+	it("ignore la casse", function()
+		assert.are.equal("minicarte", Alias.action("MiniMap"))
+		assert.are.equal("objet", Alias.option("ITEM"))
+	end)
+
+	it("traduit les options des infobulles", function()
+		assert.are.equal("objet", Alias.option("item"))
+		assert.are.equal("composant", Alias.option("reagent"))
+		assert.are.equal("personne", Alias.option("nobody"))
+		assert.are.equal("desenchantement", Alias.option("disenchant"))
+		assert.are.equal("enchanteur", Alias.option("enchanter"))
+		assert.are.equal("commander", Alias.option("order"))
+		assert.are.equal("objet", Alias.option("objet")) -- français inchangé
+	end)
+
+	it("traduit les valeurs de la commande rapide", function()
+		assert.are.equal("ctrlmaj", Alias.valeur("ctrlshift"))
+		assert.are.equal("maj", Alias.valeur("shift"))
+		assert.are.equal("aucune", Alias.valeur("none"))
+		assert.are.equal("ctrlmaj", Alias.valeur("ctrlmaj"))
+	end)
+
+	it("renvoie une chaîne vide pour une entrée absente ou invalide", function()
+		assert.are.equal("", Alias.action(nil))
+		assert.are.equal("", Alias.option(42))
+		assert.are.equal("", Alias.valeur(nil))
+	end)
+
+	it("laisse passer une commande inconnue telle quelle (en minuscules)", function()
+		assert.are.equal("truc", Alias.action("Truc"))
+	end)
+end)

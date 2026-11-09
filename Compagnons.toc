@@ -15,9 +15,12 @@
 
 embeds.xml
 
+Locales\enUS.lua
+Locales\frFR.lua
 Core\Locales.lua
 Core\Init.lua
 Core\Bitset.lua
+Core\Alias.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua

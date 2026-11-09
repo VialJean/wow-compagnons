@@ -1,171 +1,24 @@
--- Chaînes de l'interface. Le français est la langue de référence ;
--- une clé absente renvoie la clé elle-même, ce qui évite toute erreur à l'affichage.
+-- Textes de l'interface, selon la langue du client.
+--
+-- Locales/enUS.lua est la langue de référence : toutes les clés y figurent. Les autres langues (Locales/frFR.lua…)
+-- ne portent que leurs traductions ; une clé absente retombe sur l'anglais, et une clé inconnue renvoie la clé elle-même,
+-- ce qui évite toute erreur à l'affichage.
+--
+-- Ajouter une langue : créer Locales/<langue>.lua sur le modèle de frFR.lua, l'ajouter au .toc avant ce fichier.
+-- tests/locales_spec.lua vérifie les clés et les %s / %d de chaque langue.
 local _, ns = ...
 
 local L = setmetatable({}, { __index = function(_, cle) return cle end })
 ns.L = L
 
-L.AIDE_TITRE = "Compagnons — commandes"
-L.AIDE_OUVRIR = "/cpg : ouvre ou ferme l'atelier de guilde (aussi /cpg recettes)"
-L.AIDE_MINICARTE = "/cpg minicarte : masque ou réaffiche le bouton de la minicarte"
-L.AIDE_DEBUG = "/cpg debug : active ou coupe les messages de debug"
-L.AIDE_JOURNAL = "/cpg journal [n] : affiche les n dernières lignes du journal"
-L.AIDE_PERSO = "/cpg perso : métiers et recettes scannés pour ce personnage"
-L.AIDE_DIAG = "/cpg diag : diagnostic du client (à lancer avec une fenêtre de métier ouverte)"
+--- Remplit L : l'anglais d'abord, puis la langue demandée par-dessus.
+function ns.chargerTextes(textes, langue)
+	textes = textes or {}
+	for cle, valeur in pairs(textes.enUS or {}) do L[cle] = valeur end
+	if langue ~= "enUS" then
+		for cle, valeur in pairs(textes[langue] or {}) do L[cle] = valeur end
+	end
+	ns.langue = langue
+end
 
-L.DEBUG_ON = "Debug activé."
-L.DEBUG_OFF = "Debug désactivé."
-L.JOURNAL_VIDE = "Le journal est vide."
-L.PERSO_AUCUN = "Aucun métier scanné. Ouvre une fenêtre de métier pour lancer le scan."
-L.SCAN_OK = "%s : %d recettes apprises enregistrées."
-
--- Atelier de guilde
-L.TITRE = "Compagnons — Atelier de guilde"
-L.RECHERCHE = "Recette ou composant…"
-L.FILTRES = "Filtres"
-L.FILTRE_CRAFTABLE = "Craftable dans la guilde"
-L.FILTRE_EN_LIGNE = "Crafteur en ligne"
-L.FILTRE_INCONNUE = "Personne ne la connaît"
-L.METIERS = "Métiers"
-L.TOUS_METIERS = "Tous"
-L.ONGLET_RECETTES = "Recettes"
-L.ONGLET_COMMANDES = "Commandes"
-L.COMMANDES_BIENTOT = "Les commandes arrivent bientôt."
-L.COMMANDER = "Commander"
-L.AUCUN_RESULTAT = "Aucune recette ne correspond."
-L.RESULTATS = "%d résultats"
-L.COMPOSANTS = "Composants"
-L.PEUVENT_CRAFTER = "Peuvent la crafter"
-L.PERSONNE_CONNAIT = "Personne ne la connaît encore."
-L.PERSONNE = "Personne"
-L.CRAFTEURS = "%d crafteurs"
-L.CRAFTEURS_EN_LIGNE = "%d crafteurs · %d en ligne"
-L.METIER_NIVEAU = "%s · compétence %d"
-L.EN_LIGNE = "en ligne"
-L.HORS_LIGNE = "hors ligne"
-L.PIED = "Base de recettes du build %s · %d personnage(s) scanné(s)"
-
--- Commandes
-L.VUE_OUVERTES = "Ouvertes"
-L.VUE_POUR_MOI = "Pour moi"
-L.VUE_MES_COMMANDES = "Mes commandes"
-L.AIDE_VUE_OUVERTES = "Toutes les commandes en attente dans la guilde."
-L.AIDE_VUE_POUR_MOI = "Commandes que tes personnages peuvent crafter."
-L.AIDE_VUE_MES_COMMANDES = "Tes commandes passées et celles que tu as prises."
-L.AUCUNE_COMMANDE = "Aucune commande ici."
-L.NOUVELLE_COMMANDE = "Nouvelle commande"
-L.STATUT_OUVERTE = "Ouverte"
-L.STATUT_PRISE = "Prise · %s"
-L.STATUT_MATS = "Mats reçus"
-L.STATUT_TERMINEE = "Terminée"
-L.STATUT_ANNULEE = "Annulée"
-L.MATS_TOUT = "Mats fournis"
-L.MATS_PARTIE = "Mats en partie"
-L.MATS_CRAFTEUR = "Le crafteur fournit"
-L.ACTION_PRENDRE = "Je prends"
-L.ACTION_MATS = "Mats reçus"
-L.ACTION_TERMINER = "Terminé"
-L.ACTION_LIBERER = "Libérer"
-L.ACTION_ANNULER = "Annuler"
-L.CONNECTE_TOI = "Connecte-toi avec %s pour prendre cette commande."
-L.ACTION_IMPOSSIBLE = "Action impossible."
-L.COMMANDE_PUBLIEE = "Commande publiée : %d × %s."
-L.AGE_INSTANT = "à l'instant"
-L.AGE_MINUTES = "il y a %d min"
-L.AGE_HEURES = "il y a %d h"
-L.AGE_JOURS = "il y a %d j"
-L.PAR_CLIENT = "Passée par toi"
-L.POUR_CLIENT = "pour %s"
-L.CRAFTEUR_NOTE = "Note : %s"
-L.HISTORIQUE = "Historique"
-
--- Dialogue de commande
-L.DIALOGUE_TITRE = "Nouvelle commande"
-L.QUANTITE = "Quantité"
-L.CRAFTEUR = "Crafteur"
-L.OUVERT_A_TOUS = "Ouvert à tous"
-L.COMPOSANTS_QUI = "Composants"
-L.MATS_JE_FOURNIS = "Je fournis tout"
-L.MATS_EN_PARTIE = "En partie"
-L.MATS_LE_CRAFTEUR = "Le crafteur"
-L.NOTE_CRAFTEUR = "Note pour le crafteur"
-L.NOTE_EXEMPLE = "Ex. : dispo ce soir après 21 h"
-L.PUBLIER = "Publier la commande"
-L.ANNULER = "Annuler"
-L.STOCK_JE_FOURNIS = "Je fournis"
-L.STOCK_MANQUE = "Manque %d"
-L.STOCK_CRAFTEUR = "Le crafteur"
-L.VISIBLE_PAR = "Visible par %d crafteur(s) de la guilde"
-L.VISIBLE_PERSONNE = "Personne ne connaît encore cette recette"
-
--- Infobulles d'objet
-L.INFO_TITRE = "Compagnons"
-L.INFO_TITRE_COMPOSANT = "Compagnons · composant"
-L.INFO_CRAFTABLE_PAR = "Craftable par"
-L.INFO_ET_AUTRES = "et %d autres"
-L.INFO_PERSONNE = "Personne ne sait la fabriquer"
-L.INFO_PERSONNE_COURT = "personne"
-L.INFO_COMMANDE = "%d commande ouverte"
-L.INFO_COMMANDES = "%d commandes ouvertes"
-L.INFO_TU_PEUX = "tu peux en remplir %d"
-L.INFO_COMMANDER_CTRLMAJ = "Ctrl+Maj+clic : commander"
-L.INFO_COMMANDER_MAJ = "Maj+clic : commander"
-L.INFO_MANQUE = "Manque %d pour ta commande : %s"
-L.INFO_AUTRES_COMMANDES = "et %d autre(s) commande(s)"
-L.INFO_REQUIS = "Requis pour ta commande de %s : %d"
-L.INFO_UNE_RECETTE = "%s : %d recette"
-L.INFO_N_RECETTES = "%s : %d recettes"
-L.INFO_MONTE = "dont %d qui monte encore"
-L.INFO_ET_AUTRES_MEMBRES = "et %d autres membres"
-L.INFO_ET_AUTRES_RECETTES = "… et %d autres recettes"
-L.INFO_MAJ_DETAIL = "Maj : détail des recettes"
-L.INFO_UTILE_POUR = "Utile pour (%d recettes) :"
-L.INFO_UTILE_A = "Utile à %s · %s"
-L.INFO_UTILE_PERSONNE = "Utile pour %d recettes que personne ne connaît encore"
-L.INFO_TOI_COURT = "toi"
-L.INFO_UNE_RECETTE_COURT = "%d recette"
-L.INFO_N_RECETTES_COURT = "%d recettes"
-L.INFO_MONTE_COURT = "dont %d qui monte encore"
-L.INFO_TOI = "tu la connais"
-L.INFO_TOI_MONTE = "tu la connais, monte encore"
-L.INFO_TITRE_DESENCH = "Compagnons · désenchantement"
-L.INFO_DESENCH_OK = "Désenchantable · niveau d'objet %d"
-L.INFO_ENCHANTEURS = "Enchanteurs :"
-L.INFO_AUCUN_ENCHANTEUR = "Aucun enchanteur dans la guilde"
-L.AIDE_INFOBULLES = "/cpg infobulles [objet|composant|personne|desenchantement|enchanteur|commander <ctrlmaj|maj|aucune>] : réglages des infobulles"
-L.INFO_ETAT = "Infobulles : objet %s, composant %s, « personne » %s, désenchantement %s, « aucun enchanteur » %s, commande rapide : %s."
-L.INFO_ACTIVE = "activé"
-L.INFO_DESACTIVE = "désactivé"
-L.INFO_AUCUNE_RECETTE = "Aucune recette connue pour cet objet."
-
--- Alertes
-L.ALERTE_NOUVELLE = "Nouvelle commande pour toi"
-L.ALERTE_PLUSIEURS = "%d nouvelles commandes pour toi"
-L.ALERTE_TERMINEE = "Commande terminée"
-L.ALERTE_PRISE = "Commande prise"
-L.ALERTE_LIBEREE = "Commande libérée"
-L.ALERTE_DETAIL = "%d × %s · %s"
-L.ALERTE_VOIR = "Voir"
-
--- Synchro
-L.AIDE_SYNC = "/cpg sync [annonce] : état de la synchro de guilde (ou force une annonce)"
-L.SYNC_ETAT = "Synchro : %d profils, %d commandes, hash %d, %d messages envoyés, %d reçus, %d membres en ligne."
-L.SYNC_ETAT_COURT = "%d commandes · %d profils synchronisés"
-L.SYNC_ANNONCE ="Annonce envoyée à la guilde."
-
--- Minicarte
-L.MINICARTE_PERSOS = "%d personnage(s) scanné(s)"
-L.MINICARTE_A_REMPLIR = "%d commande(s) que tu peux remplir"
-L.MINICARTE_EN_COURS = "%d de tes commandes en cours"
-L.MINICARTE_AIDE ="Clic : ouvrir · Clic droit : masquer"
-L.MINICARTE_MASQUEE = "Bouton de minicarte masqué. /cpg minicarte pour le réafficher."
-
--- Panneau de la fenêtre de métier
-L.PANNEAU_TITRE = "Compagnons · %s"
-L.PANNEAU_COMMANDES = "Commandes (%d)"
-L.PANNEAU_AUCUNE_COMMANDE = "Aucune commande pour ce métier."
-L.SELECTIONNE_RECETTE = "Sélectionne une recette."
-L.RECETTE_INCONNUE_BASE = "Recette absente de la base."
-L.ET_AUTRES = "… et %d autres"
-L.BILAN = "%d recettes sur %d connues dans la guilde"
-L.OUVRIR_ATELIER = "Ouvrir l'atelier de guilde"
+ns.chargerTextes(ns.Textes, GetLocale and GetLocale() or "enUS")
