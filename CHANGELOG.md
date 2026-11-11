@@ -36,7 +36,7 @@
 **Known limits**
 - Hand-overs split across several trades are not added up.
 - The assistant uses your current character's bags only.
-- The trade, mail and assistant features are new and still being validated on Forever: please report problems with `/cpg log`.
+- Trades, mail and the hand-over assistant have been tested in game on Forever and work. Please report problems with `/cpg log`.
 
 ---
 

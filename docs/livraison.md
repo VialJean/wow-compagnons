@@ -211,8 +211,8 @@ pour l'objet 2589).
 **Événements connus** : tous ceux de la liste d'observation existent sauf `TRADE_SKILL_CRAFTING_BEGIN`. Courrier
 (`MAIL_SHOW`, `MAIL_INBOX_UPDATE`) et banque (`BANKFRAME_OPENED`, `BANKFRAME_CLOSED`) arrivent comme prévu.
 
-**Pas encore observé** : un échange (`TRADE_*`) et un courrier avec pièce jointe, envoyé puis reçu. Les phases 3 et 4 en
-dépendent.
+**Validé en jeu (novembre 2026)** : un échange (`TRADE_*`) et un courrier avec pièce jointe, envoyé puis reçu, ainsi que
+l'assistant de remise. Les phases 3 et 4 fonctionnent comme prévu.
 
 ## 13. Phase 2 : progression des fabrications (implémentée)
 
