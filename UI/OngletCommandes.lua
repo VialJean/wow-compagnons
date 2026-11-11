@@ -227,8 +227,14 @@ end
 function Fenetre:InfobulleCommande(ligne)
 	local o = ligne.commande
 	if not o or not GameTooltip then return end
-	GameTooltip:SetOwner(ligne, "ANCHOR_RIGHT")
 	local recette = ns.Recettes.recettes[o.spell]
+	if recette then
+		-- Infobulle Blizzard de l'objet (ou du sort), puis les crafteurs de la guilde.
+		ns.infobulleRecette(ligne, o.spell)
+	else
+		GameTooltip:SetOwner(ligne, "ANCHOR_RIGHT")
+	end
+	GameTooltip:AddLine(" ")
 	GameTooltip:AddLine(string.format("%d × %s", o.qte, recette and recette.nom or "?"), 1, 1, 1)
 	GameTooltip:AddLine(string.format(L.POUR_CLIENT, o.client), 0.9, 0.8, 0.5)
 	if o.note and o.note ~= "" then GameTooltip:AddLine(string.format(L.CRAFTEUR_NOTE, o.note), 1, 1, 1, true) end
