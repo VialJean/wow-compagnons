@@ -58,6 +58,11 @@ local function nomRecette(o)
 	return r and r.nom or "?"
 end
 
+--- Écrit l'alerte dans le chat tout de suite, même en combat : le cadre, lui, attend la fin du combat.
+local function ecrireDansLeChat(message)
+	Compagnons:Print(message.titre .. (message.detail ~= "" and (" : " .. message.detail) or ""))
+end
+
 --- Transforme la file en messages (un par genre), puis les affiche si l'on n'est pas en combat.
 function Alertes:Vider()
 	if #self.file > 0 then
@@ -68,17 +73,21 @@ function Alertes:Vider()
 		local function ajouter(titre, liste, voir)
 			if #liste == 0 then return end
 			local o = liste[1]
-			self.messages[#self.messages + 1] = {
+			local message = {
 				titre = titre,
 				detail = string.format(L.ALERTE_DETAIL, o.qte, nomRecette(o), o.assigne or o.client),
 				voir = voir,
 				vue = voir,
 			}
+			self.messages[#self.messages + 1] = message
+			ecrireDansLeChat(message)
 		end
 		if #groupes.nouvelle > 1 then
-			self.messages[#self.messages + 1] = {
+			local message = {
 				titre = string.format(L.ALERTE_PLUSIEURS, #groupes.nouvelle), detail = "", voir = "pourmoi",
 			}
+			self.messages[#self.messages + 1] = message
+			ecrireDansLeChat(message)
 		else
 			ajouter(L.ALERTE_NOUVELLE, groupes.nouvelle, "pourmoi")
 		end
@@ -145,7 +154,6 @@ function Alertes:Afficher(message)
 	f.titre:SetText(message.titre)
 	f.detail:SetText(message.detail)
 	f:Show()
-	Compagnons:Print(message.titre .. (message.detail ~= "" and (" : " .. message.detail) or ""))
 
 	local jeton = (self.jeton or 0) + 1
 	self.jeton = jeton
