@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.4.0)
+## 0.4.0
 
 **Delivery**
 - **Hand-overs in several parts add up:** materials the client sends in two trades or mails, or a crafted item handed over in two times, are now added together; the order moves forward when the total is enough.
@@ -11,7 +11,7 @@
 
 ---
 
-## Non publié (0.4.0, français)
+## 0.4.0 (français)
 
 **Livraison**
 - **Remises en plusieurs fois :** les matériaux envoyés par le client en deux échanges ou courriers, ou l'objet fabriqué remis en deux fois, s'additionnent ; la commande avance quand le total suffit.
