@@ -205,11 +205,11 @@ function Assistance:Actualiser()
 		local enSacs = {}
 		for _, s in ipairs(sacs) do enSacs[s.itemID] = (enSacs[s.itemID] or 0) + s.count end
 		local ailleurs = ns.Stocks and ns.Assistance.ou(manque, function(id) return ns.Stocks:Detail(id) end, moi, enSacs) or {}
-		local ids = {}
-		for id in pairs(manque) do ids[#ids + 1] = id end
-		table.sort(ids)
+		local absents = {}
+		for id in pairs(manque) do absents[#absents + 1] = id end
+		table.sort(absents)
 		local texteManque
-		for _, id in ipairs(ids) do
+		for _, id in ipairs(absents) do
 			local texte = manque[id] .. " × " .. nomObjet(id)
 			local o = ailleurs[id]
 			if o then
