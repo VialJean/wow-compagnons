@@ -8,6 +8,7 @@
 -- Le rapport est affiché dans le chat et enregistré dans CompagnonsDB.global.diag.rapport.
 local _, ns = ...
 local Compagnons = ns.addon
+local L = ns.L
 
 local Diagnostic = Compagnons:NewModule("Diagnostic")
 
@@ -37,16 +38,16 @@ end
 
 function Diagnostic:Lancer()
 	rapport = {}
-	Compagnons:Print("Diagnostic du client")
+	Compagnons:Print(L.DIAG_TITRE)
 
 	-- 1. Client
 	section("Client")
 	local version, build, dateBuild, toc = GetBuildInfo()
-	ligne(INFO, "Version %s, build %s (%s), interface %s", version, build, dateBuild, tostring(toc))
-	ligne(toc == 16001 and OK or KO, "Interface attendue par le .toc : 16001")
+	ligne(INFO, L.DIAG_VERSION, version, build, dateBuild, tostring(toc))
+	ligne(toc == 16001 and OK or KO, L.DIAG_TOC)
 
 	-- 1 bis. Identité : comment le jeu nomme le personnage (sert à définir la clé d'un personnage)
-	section("Identité")
+	section(L.DIAG_SEC_IDENTITE)
 	local function valeurs(...)
 		local t = {}
 		for i = 1, select("#", ...) do t[i] = string.format("%q", tostring((select(i, ...)))) end
@@ -54,7 +55,7 @@ function Diagnostic:Lancer()
 	end
 	local function relever(nom, fn, ...)
 		local ok, a, b, c = pcall(fn, ...)
-		ligne(INFO, "%s -> %s", nom, ok and valeurs(a, b, c) or ("erreur : " .. tostring(a)))
+		ligne(INFO, "%s -> %s", nom, ok and valeurs(a, b, c) or string.format(L.DIAG_ERREUR, tostring(a)))
 	end
 	relever('UnitName("player")', UnitName, "player")
 	relever('UnitFullName("player")', UnitFullName, "player")
@@ -74,15 +75,15 @@ function Diagnostic:Lancer()
 	-- 2. SavedVariables
 	section("SavedVariables")
 	local diag = ns.db.global.diag
-	ligne(INFO, "Compte : %d sessions depuis le %s", diag.sessions, date("%d/%m/%Y %H:%M", diag.premiere))
-	ligne(INFO, "Personnage : %d sessions", CompagnonsPersoDB and CompagnonsPersoDB.sessions or 0)
-	ligne(INFO, "Fais /reload, puis déconnecte-toi et reconnecte-toi : les deux compteurs doivent augmenter")
+	ligne(INFO, L.DIAG_COMPTE_SESSIONS, diag.sessions, date("%d/%m/%Y %H:%M", diag.premiere))
+	ligne(INFO, L.DIAG_PERSO_SESSIONS, CompagnonsPersoDB and CompagnonsPersoDB.sessions or 0)
+	ligne(INFO, L.DIAG_RELOAD)
 
 	-- 3. C_EncodingUtil
 	section("C_EncodingUtil")
 	local E = C_EncodingUtil
 	if not E then
-		ligne(KO, "C_EncodingUtil absent : on utilisera LibSerialize + LibDeflate")
+		ligne(KO, L.DIAG_ENCODING_ABSENT)
 	else
 		for _, f in ipairs({ "SerializeCBOR", "DeserializeCBOR", "CompressString", "DecompressString", "EncodeBase64", "DecodeBase64" }) do
 			ligne(E[f] and OK or KO, "%s", f)
@@ -90,16 +91,16 @@ function Diagnostic:Lancer()
 		if E.CompressString and E.DecompressString then
 			local source = string.rep("Compagnons ", 50)
 			local ok, rond = pcall(function() return E.DecompressString(E.CompressString(source)) end)
-			ligne(ok and rond == source and OK or KO, "Aller-retour compression")
+			ligne(ok and rond == source and OK or KO, L.DIAG_RONDE_COMPRESSION)
 		end
 		if E.SerializeCBOR and E.DeserializeCBOR then
 			local ok, t = pcall(function() return E.DeserializeCBOR(E.SerializeCBOR({ a = 1, b = { 2, 3 } })) end)
-			ligne(ok and type(t) == "table" and t.a == 1 and OK or KO, "Aller-retour CBOR")
+			ligne(ok and type(t) == "table" and t.a == 1 and OK or KO, L.DIAG_RONDE_CBOR)
 		end
 	end
 
 	-- 4. Métiers
-	section("Métiers")
+	section(L.DIAG_SEC_METIERS)
 	local TS = C_TradeSkillUI
 	for _, f in ipairs({ "GetAllRecipeIDs", "GetRecipeInfo", "GetRecipeSchematic", "GetBaseProfessionInfo" }) do
 		ligne(TS and TS[f] and OK or KO, "C_TradeSkillUI.%s", f)
@@ -110,21 +111,21 @@ function Diagnostic:Lancer()
 		for _, m in pairs(perso.metiers) do
 			vu = true
 			if m.nbVues > m.nbApprises then
-				ligne(OK, "%s : %d vues pour %d apprises → les recettes non apprises sont renvoyées", m.nom, m.nbVues, m.nbApprises)
+				ligne(OK, L.DIAG_VUES_PLUS, m.nom, m.nbVues, m.nbApprises)
 			else
-				ligne(INFO, "%s : %d vues = %d apprises → seulement les apprises (ou tout est appris)", m.nom, m.nbVues, m.nbApprises)
+				ligne(INFO, L.DIAG_VUES_EGAL, m.nom, m.nbVues, m.nbApprises)
 			end
 		end
 	end
 	if not vu then
-		ligne(INFO, "Aucun métier scanné : ouvre une fenêtre de métier puis relance /cpg diag")
+		ligne(INFO, L.DIAG_AUCUN_METIER)
 	end
 
 	-- 5. Templates
-	section("Templates d'interface")
+	section(L.DIAG_SEC_TEMPLATES)
 	local X = C_XMLUtil
 	if not (X and X.GetTemplateInfo) then
-		ligne(INFO, "C_XMLUtil.GetTemplateInfo absent : vérification manuelle dans wow-ui-source")
+		ligne(INFO, L.DIAG_TEMPLATE_ABSENT)
 	else
 		for _, nom in ipairs(TEMPLATES) do
 			local ok, info = pcall(X.GetTemplateInfo, nom)
@@ -133,7 +134,7 @@ function Diagnostic:Lancer()
 	end
 
 	-- 5 bis. Infobulles : API qui décident du branchement (voir docs/infobulles.md, §4.4)
-	section("Infobulles")
+	section(L.DIAG_SEC_INFOBULLES)
 	local function api(nom, valeur, detail)
 		ligne(valeur and OK or KO, "%s%s", nom, detail and (" : " .. detail) or "")
 	end
@@ -163,11 +164,11 @@ function Diagnostic:Lancer()
 		if fn then
 			-- Valeurs attendues : 1 nom, 2 lien, 3 qualité, 4 niveau d'objet, ... 12 classe, 13 sous-classe.
 			local r = { pcall(fn, 25) } -- r[1] = réussite, puis les valeurs décalées d'un cran
-			ligne(INFO, "GetItemInfo(25) -> %s, nom=%s, qualité=%s, niveauObjet=%s, classe=%s, sousClasse=%s",
+			ligne(INFO, L.DIAG_ITEMINFO,
 				tostring(r[1]), tostring(r[2]), tostring(r[4]), tostring(r[5]), tostring(r[13]), tostring(r[14]))
 			if type(r[2]) == "table" then
 				local t = r[2]
-				ligne(INFO, "GetItemInfo renvoie une table : classID=%s subclassID=%s quality=%s itemLevel=%s",
+				ligne(INFO, L.DIAG_ITEMINFO_TABLE,
 					tostring(t.classID), tostring(t.subclassID), tostring(t.quality), tostring(t.itemLevel))
 			end
 		end
@@ -176,30 +177,30 @@ function Diagnostic:Lancer()
 	if GameTooltip then
 		GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 		local ok = GameTooltip.SetItemByID and pcall(GameTooltip.SetItemByID, GameTooltip, 1251)
-		ligne(INFO, "SetItemByID(1251) -> %s, %d lignes", tostring(ok), GameTooltip:NumLines())
+		ligne(INFO, L.DIAG_TOOLTIP_ESSAI, tostring(ok), GameTooltip:NumLines())
 		GameTooltip:Hide()
 	end
 
 	-- 6. Canal addon
-	section("Canal addon")
+	section(L.DIAG_SEC_CANAL)
 	local CI = C_ChatInfo
 	if CI and CI.RegisterAddonMessagePrefix then
 		CI.RegisterAddonMessagePrefix(ns.PREFIXE)
-		ligne(CI.IsAddonMessagePrefixRegistered(ns.PREFIXE) and OK or KO, "Préfixe %s enregistré", ns.PREFIXE)
+		ligne(CI.IsAddonMessagePrefixRegistered(ns.PREFIXE) and OK or KO, L.DIAG_PREFIXE, ns.PREFIXE)
 	else
 		ligne(KO, "C_ChatInfo.RegisterAddonMessagePrefix absent")
 	end
-	ligne(IsInGuild() and OK or INFO, IsInGuild() and "Dans une guilde" or "Pas de guilde : la synchro ne pourra pas être testée")
+	ligne(IsInGuild() and OK or INFO, IsInGuild() and L.DIAG_EN_GUILDE or L.DIAG_PAS_GUILDE)
 	local essai = (IsTrialAccount and IsTrialAccount()) or (IsVeteranTrialAccount and IsVeteranTrialAccount())
-	ligne(essai and KO or OK, essai and "Compte d'essai : envoi de messages addon impossible" or "Compte complet")
+	ligne(essai and KO or OK, essai and L.DIAG_ESSAI or L.DIAG_COMPLET)
 
 	-- Bibliothèques
-	section("Bibliothèques")
+	section(L.DIAG_SEC_LIBS)
 	for _, lib in ipairs({ "AceAddon-3.0", "AceDB-3.0", "AceComm-3.0", "LibSerialize", "LibDeflate", "LibDBIcon-1.0" }) do
 		ligne(LibStub(lib, true) and OK or KO, "%s", lib)
 	end
 
 	diag.rapport = rapport
 	diag.rapportLe = time()
-	Compagnons:Print("Rapport enregistré dans CompagnonsDB (fichier WTF/Account/<compte>/SavedVariables/Compagnons.lua après /reload).")
+	Compagnons:Print(L.DIAG_FIN)
 end
