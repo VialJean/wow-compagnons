@@ -196,13 +196,29 @@ function Assistance:Actualiser()
 
 		local reste = ns.Assistance.restant(requis, places)
 		local maxEmpl = self.contexte == "echange" and EMPLACEMENTS_ECHANGE or EMPLACEMENTS_COURRIER
-		local plan, manque = ns.Assistance.placements(reste, lireSacs(), libre and (maxEmpl - (libre - 1)) or 0)
+		local sacs = lireSacs()
+		local plan, manque = ns.Assistance.placements(reste, sacs, libre and (maxEmpl - (libre - 1)) or 0)
 		self.plan = { partenaire = partenaire, suivant = plan[1], libre = libre }
 
 		f.titre:SetText(string.format(L.ASSIST_TITRE, partenaire, #ids))
+		-- Où se trouve le manque : la banque de ce personnage, ou un autre de mes personnages.
+		local enSacs = {}
+		for _, s in ipairs(sacs) do enSacs[s.itemID] = (enSacs[s.itemID] or 0) + s.count end
+		local ailleurs = ns.Stocks and ns.Assistance.ou(manque, function(id) return ns.Stocks:Detail(id) end, moi, enSacs) or {}
+		local ids = {}
+		for id in pairs(manque) do ids[#ids + 1] = id end
+		table.sort(ids)
 		local texteManque
-		for id, n in pairs(manque) do
-			texteManque = (texteManque and (texteManque .. ", ") or "") .. n .. " × " .. nomObjet(id)
+		for _, id in ipairs(ids) do
+			local texte = manque[id] .. " × " .. nomObjet(id)
+			local o = ailleurs[id]
+			if o then
+				local ou = {}
+				if o.banque > 0 then ou[#ou + 1] = string.format(L.ASSIST_OU_BANQUE, o.banque) end
+				for _, a in ipairs(o.autres) do ou[#ou + 1] = string.format(L.ASSIST_OU_PERSO, a.n, a.cle) end
+				texte = texte .. " (" .. table.concat(ou, ", ") .. ")"
+			end
+			texteManque = (texteManque and (texteManque .. ", ") or "") .. texte
 		end
 		if not next(reste) then
 			f.etat:SetText(L.ASSIST_FINI)

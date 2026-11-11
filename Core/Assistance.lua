@@ -104,4 +104,24 @@ function Assistance.placements(restant, sacs, maxEmplacements)
 	return liste, manque
 end
 
+--- Où se trouve ce qui manque dans les sacs : { [itemID] = { banque = n, autres = { { cle, n }, ... } } }.
+-- `detail(itemID)` renvoie le stock par personnage ({ { cle, n }, ... }, le personnage connecté lu en direct, banque
+-- comprise) ; `enSacs[itemID]` est ce que le personnage connecté porte dans ses sacs : le reste de son stock est en banque.
+-- Un objet introuvable partout est absent du résultat.
+function Assistance.ou(manque, detail, courant, enSacs)
+	local resultat = {}
+	for id in pairs(manque) do
+		local banque, autres = 0, {}
+		for _, e in ipairs(detail(id)) do
+			if e.cle == courant then
+				banque = math.max(0, e.n - (enSacs[id] or 0))
+			else
+				autres[#autres + 1] = { cle = e.cle, n = e.n }
+			end
+		end
+		if banque > 0 or #autres > 0 then resultat[id] = { banque = banque, autres = autres } end
+	end
+	return resultat
+end
+
 return Assistance

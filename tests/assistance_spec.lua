@@ -91,3 +91,28 @@ describe("Assistance.restant et placements", function()
 		assert.are.equal(1, manque[12])   -- plus de place
 	end)
 end)
+
+describe("Assistance.ou", function()
+	local detail = function(id)
+		if id == 10 then return { { cle = "Jean Vialjean", n = 7 }, { cle = "Alt Deux", n = 3 } } end
+		if id == 11 then return { { cle = "Jean Vialjean", n = 2 } } end
+		return {}
+	end
+
+	it("sépare la banque du personnage connecté et les autres personnages", function()
+		local r = Assistance.ou({ [10] = 5 }, detail, "Jean Vialjean", { [10] = 4 })
+		assert.are.equal(3, r[10].banque) -- 7 en tout, 4 dans les sacs
+		assert.are.equal(1, #r[10].autres)
+		assert.are.equal("Alt Deux", r[10].autres[1].cle)
+		assert.are.equal(3, r[10].autres[1].n)
+	end)
+
+	it("n'indique pas de banque quand tout est déjà dans les sacs", function()
+		local r = Assistance.ou({ [11] = 1 }, detail, "Jean Vialjean", { [11] = 2 })
+		assert.is_nil(r[11])
+	end)
+
+	it("ignore un objet introuvable partout", function()
+		assert.is_nil(Assistance.ou({ [99] = 1 }, detail, "Jean Vialjean", {})[99])
+	end)
+end)

@@ -277,7 +277,10 @@ déjà vide (message 472 « Message envoyé. ») ; retirer une pièce jointe vid
 - **Noyau testé** (`Core/Assistance.lua`) : qui, quoi, quelle quantité, quels emplacements des sacs. La pose elle-même dépend
   des API de Forever (`C_Container`, `ClickTradeButton`, `ClickSendMailItemButton`) et reste à valider en jeu ; une erreur est
   journalisée (`/cpg journal`) et le curseur vidé.
-- **Limite** : seuls les sacs du personnage connecté sont utilisés (pas ses autres personnages ni la banque).
+- **Où est le manque** (0.4.0) : un objet absent des sacs est accompagné de sa position, d'après le stock des personnages
+  (`Assistance.ou`) : « 5 × Lin (2 en banque, 3 sur Alt) ». La banque est le stock du personnage connecté moins ce qu'il porte.
+- **Limite** : seuls les sacs du personnage connecté (sac de composants compris) sont utilisés pour poser ; la banque et les
+  autres personnages sont seulement signalés, l'addon ne peut pas en sortir d'objet.
 
 ### Prix des vendeurs PNJ
 
