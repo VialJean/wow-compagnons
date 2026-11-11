@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.1
+
+**Fixes**
+- **Hand-over assistant:** the panel next to the mail (or trade) window now closes with it instead of staying on screen.
+- **Minimap button:** the count of orders you can fill is now visible on the button (it was drawn under the icon).
+- **Members tab:** guildmates who run the addon are listed even before they have scanned their professions ("Professions not scanned yet").
+
+---
+
+## 0.3.1 (français)
+
+**Corrections**
+- **Assistant de remise :** le cadre à côté de la fenêtre de courrier (ou d'échange) se ferme avec elle au lieu de rester affiché.
+- **Bouton de minicarte :** le nombre de commandes que tu peux remplir est de nouveau visible sur le bouton (il passait sous l'icône).
+- **Onglet Membres :** les membres de la guilde qui ont l'addon apparaissent même avant d'avoir scanné leurs métiers (« Métiers pas encore scannés »).
+
+---
+
 ## 0.3.0-beta1
 
 **Delivery, from need to hand-over, without leaving the game**
