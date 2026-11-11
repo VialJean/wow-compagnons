@@ -81,7 +81,13 @@ end
 
 --- Rapproche un échange terminé des commandes que j'ai prises, puis propose (ou applique) les transitions.
 function Echanges:Traiter(partenaire, recu, donne)
-	local propositions = ns.Livraison.rapprocher(ns.db.global.commandes, ns.Recettes, ns.clePersonnage(), partenaire, recu, donne)
+	local moi = ns.clePersonnage()
+	local cumul = ns.db.global.livraisonCumul
+	ns.Livraison.purger(cumul, ns.db.global.commandes, moi)
+	local propositions, nouveau = ns.Livraison.rapprocher(ns.db.global.commandes, ns.Recettes, moi, partenaire, recu, donne, cumul)
+	-- Remplace le contenu en place : la table appartient à la base de données.
+	for id in pairs(cumul) do cumul[id] = nil end
+	for id, fiche in pairs(nouveau) do cumul[id] = fiche end
 	ns.log("sync", "livraison", "échange avec %s : %d proposition(s)", tostring(partenaire), #propositions)
 	for _, p in ipairs(propositions) do
 		if ns.db.profile.livraison.confirmer then

@@ -100,3 +100,51 @@ describe("Livraison.courriersRetires", function()
 		assert.is_true(Livraison.memePersonne("Spellus Spamus", "Spellus-CAMWOWEU5Realm10RP"))
 	end)
 end)
+
+describe("Livraison.rapprocher : remises en plusieurs fois", function()
+	local moi, partenaire = "Jean Vialjean", "Spellus"
+
+	it("additionne les matériaux « tout » remis en deux échanges", function()
+		local cmds = lister({ commande("a") }) -- 3 × (2 de 10 + 1 de 11) = 6 de 10 et 3 de 11
+		local p1, cumul = Livraison.rapprocher(cmds, donnees, moi, partenaire, { [10] = 4, [11] = 1 }, {})
+		assert.are.equal(0, #p1)
+		assert.are.equal(4, cumul.a.recu[10])
+		local p2, cumul2 = Livraison.rapprocher(cmds, donnees, moi, partenaire, { [10] = 2, [11] = 2 }, {}, cumul)
+		assert.are.equal(1, #p2)
+		assert.are.equal("mats", p2[1].action)
+		assert.is_nil(cumul2.a)
+	end)
+
+	it("ne retient pas plus que ce qui manque", function()
+		local cmds = lister({ commande("a") })
+		local _, cumul = Livraison.rapprocher(cmds, donnees, moi, partenaire, { [10] = 50 }, {})
+		assert.are.equal(6, cumul.a.recu[10])
+	end)
+
+	it("additionne l'objet fabriqué remis en deux fois", function()
+		local cmds = lister({ commande("a", { statut = "mats" }) })
+		local p1, cumul = Livraison.rapprocher(cmds, donnees, moi, partenaire, {}, { [500] = 2 })
+		assert.are.equal(0, #p1)
+		assert.are.equal(2, cumul.a.donne[500])
+		local p2, cumul2 = Livraison.rapprocher(cmds, donnees, moi, partenaire, {}, { [500] = 1 }, cumul)
+		assert.are.equal("terminer", p2[1].action)
+		assert.is_nil(cumul2.a)
+	end)
+
+	it("garde le cumul des commandes que l'échange ne concerne pas", function()
+		local cmds = lister({ commande("a") })
+		local _, cumul = Livraison.rapprocher(cmds, donnees, moi, partenaire, { [10] = 2 }, {})
+		local _, cumul2 = Livraison.rapprocher(cmds, donnees, moi, "Autre", {}, {}, cumul)
+		assert.are.equal(2, cumul2.a.recu[10])
+	end)
+
+	it("purge le cumul des commandes annulées ou reprises par un autre", function()
+		local cumul = { a = { recu = { [10] = 1 }, donne = {} }, b = { recu = {}, donne = { [500] = 1 } },
+			c = { recu = { [10] = 1 }, donne = {} } }
+		local cmds = lister({ commande("a", { statut = "annulee" }), commande("b", { assigne = "Autre" }), commande("c") })
+		Livraison.purger(cumul, cmds, moi)
+		assert.is_nil(cumul.a)
+		assert.is_nil(cumul.b)
+		assert.is_not_nil(cumul.c)
+	end)
+end)

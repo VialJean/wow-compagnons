@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased (0.4.0)
+
+**Delivery**
+- **Hand-overs in several parts add up:** materials the client sends in two trades or mails, or a crafted item handed over in two times, are now added together; the order moves forward when the total is enough.
+- **Hand-over assistant:** it now also looks in your reagent bag.
+- **Orders:** hovering an order shows the Blizzard tooltip of the item (or spell), then the guild's crafters, then the order details.
+- **Diagnostic:** the `/cpg diag` report is translated (English and French).
+
+---
+
+## Non publié (0.4.0, français)
+
+**Livraison**
+- **Remises en plusieurs fois :** les matériaux envoyés par le client en deux échanges ou courriers, ou l'objet fabriqué remis en deux fois, s'additionnent ; la commande avance quand le total suffit.
+- **Assistant de remise :** il regarde aussi dans le sac de composants.
+- **Commandes :** au survol, l'infobulle de Blizzard (objet ou sort), puis les crafteurs de la guilde, puis le détail de la commande.
+- **Diagnostic :** le rapport de `/cpg diag` est traduit (anglais et français).
+
+---
+
 ## 0.3.1
 
 **Fixes**

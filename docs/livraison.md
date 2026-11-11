@@ -243,8 +243,11 @@ partenaire.
   commandes ; la plus ancienne passe d'abord ; un enchantement (pas d'objet créé) ne se termine pas par échange.
 - **Confirmation** : une fenêtre demande avant d'avancer la commande (`profile.livraison.confirmer`, activé). Rien n'est
   jamais accepté ni envoyé automatiquement.
-- **Limites connues** : les livraisons en plusieurs échanges ne s'additionnent pas ; le partenaire est reconnu par son
-  prénom. Le courrier (phase 4) reste à faire : `MAIL_SEND_SUCCESS` après `MAIL_SEND_INFO_UPDATE` pour l'envoi, état des
+- **Remises en plusieurs fois** (0.4.0) : `Livraison.rapprocher` reçoit et renvoie un cumul par commande
+  (`global.livraisonCumul`, `[idCommande] = { recu, donne }`). Les matériaux « tout » et l'objet fabriqué remis en plusieurs
+  échanges ou courriers s'additionnent ; la commande avance quand le total suffit. Un cumul ne retient jamais plus que ce
+  qui manque, et il est purgé (`Livraison.purger`) quand la commande est annulée, terminée ou reprise par un autre.
+- **Limites connues** : le partenaire est reconnu par son prénom. Le courrier (phase 4) reste à faire : `MAIL_SEND_SUCCESS` après `MAIL_SEND_INFO_UPDATE` pour l'envoi, état des
   pièces jointes avant/après `MAIL_INBOX_UPDATE` pour la réception.
 
 ## 15. Phase 4 : livraison par courrier (implémentée, à valider en jeu)

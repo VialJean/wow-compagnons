@@ -29,9 +29,20 @@ local function copie(t)
 	return c
 end
 
+--- Ajoute `n` unités de `id` au compteur `t`.
+local function ajoute(t, id, n)
+	if n > 0 then t[id] = (t[id] or 0) + n end
+end
+
+local function vide(t) return next(t) == nil end
+
 --- Propositions pour un échange avec `partenaire`. `recu` et `donne` : { [itemID] = quantité }.
--- Renvoie une liste triée par ancienneté { { id, action = "mats" | "terminer" }, ... }.
-function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne)
+-- `cumul` (facultatif) : ce qui a déjà été remis pour chaque commande lors d'échanges ou de courriers précédents,
+-- { [idCommande] = { recu = { [itemID] = n }, donne = { [itemID] = n } } }. Une livraison faite en plusieurs fois
+-- s'additionne : la commande avance quand le total suffit.
+-- Renvoie 1) une liste triée par ancienneté { { id, action = "mats" | "terminer" }, ... }
+-- et 2) le nouveau cumul (les commandes qui avancent en sont retirées, celles qui reçoivent une partie y sont ajoutées).
+function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne, cumul)
 	local restantRecu, restantDonne = copie(recu), copie(donne)
 	local candidates = {}
 	for _, o in pairs(commandes) do
@@ -44,41 +55,77 @@ function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne)
 		return a.id < b.id
 	end)
 
+	-- Le cumul des commandes que cet échange ne concerne pas est conservé tel quel.
+	local nouveau = {}
+	for id, c in pairs(cumul or {}) do nouveau[id] = { recu = copie(c.recu), donne = copie(c.donne) } end
+
 	local propositions = {}
 	for _, o in ipairs(candidates) do
 		local recette = donnees.recettes[o.spell]
+		local fiche = nouveau[o.id] or { recu = {}, donne = {} }
 		local action
 
-		-- Objet fabriqué remis au client : la commande est terminée.
+		-- Objet fabriqué remis au client : la commande est terminée quand le total remis suffit.
 		if (o.statut == "prise" or o.statut == "mats") and recette.objet then
 			local besoin = o.qte * (recette.qte or 1)
-			if (restantDonne[recette.objet] or 0) >= besoin then
-				restantDonne[recette.objet] = restantDonne[recette.objet] - besoin
+			local deja = fiche.donne[recette.objet] or 0
+			local dispo = restantDonne[recette.objet] or 0
+			if deja + dispo >= besoin then
+				restantDonne[recette.objet] = dispo - math.max(0, besoin - deja)
 				action = "terminer"
+			else
+				ajoute(fiche.donne, recette.objet, dispo) -- remise partielle : on la garde pour la suite
+				restantDonne[recette.objet] = 0
 			end
 		end
 
-		-- Matériaux remis par le client : « tout » doit être couvert, « partie » se contente d'un composant.
+		-- Matériaux remis par le client : « tout » doit être couvert (en cumulant), « partie » se contente d'un composant.
 		if not action and o.statut == "prise" and o.mats ~= "crafteur" then
 			local couvre, un = true, false
 			for _, comp in ipairs(recette.composants or {}) do
+				local deja = fiche.recu[comp[1]] or 0
 				local dispo = restantRecu[comp[1]] or 0
-				if dispo > 0 then un = true end
-				if dispo < comp[2] * o.qte then couvre = false end
+				if deja + dispo > 0 then un = true end
+				if deja + dispo < comp[2] * o.qte then couvre = false end
 			end
 			if (o.mats == "tout" and couvre and un) or (o.mats == "partie" and un) then
 				if o.mats == "tout" then
 					for _, comp in ipairs(recette.composants) do
-						restantRecu[comp[1]] = restantRecu[comp[1]] - comp[2] * o.qte
+						local deja = fiche.recu[comp[1]] or 0
+						restantRecu[comp[1]] = (restantRecu[comp[1]] or 0) - math.max(0, comp[2] * o.qte - deja)
 					end
 				end
+				fiche.recu = {}
 				action = "mats"
+			elseif o.mats == "tout" then
+				-- Remise partielle : chaque composant attendu est retenu, dans la limite de ce qu'il manque.
+				for _, comp in ipairs(recette.composants or {}) do
+					local manque = comp[2] * o.qte - (fiche.recu[comp[1]] or 0)
+					local pris = math.min(restantRecu[comp[1]] or 0, math.max(0, manque))
+					ajoute(fiche.recu, comp[1], pris)
+					restantRecu[comp[1]] = (restantRecu[comp[1]] or 0) - pris
+				end
 			end
 		end
 
+		if action == "terminer" then
+			nouveau[o.id] = nil
+		elseif vide(fiche.recu) and vide(fiche.donne) then
+			nouveau[o.id] = nil
+		else
+			nouveau[o.id] = fiche
+		end
 		if action then propositions[#propositions + 1] = { id = o.id, action = action } end
 	end
-	return propositions
+	return propositions, nouveau
+end
+
+--- Retire du cumul les commandes qui n'existent plus ou que je ne dois plus livrer (annulée, terminée, libérée).
+function Livraison.purger(cumul, commandes, moi)
+	for id in pairs(cumul) do
+		local o = commandes[id]
+		if not o or o.assigne ~= moi or (o.statut ~= "prise" and o.statut ~= "mats") then cumul[id] = nil end
+	end
 end
 
 local function signature(courrier)
