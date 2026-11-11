@@ -58,6 +58,7 @@ function Reseau:OnEnable()
 		profils = ns.db.global.guilde,
 		commandes = ns.db.global.commandes,
 		prix = ns.db.global.prix,
+		vus = ns.db.global.vus,
 		surPrix = function() Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end,
 		moi = ns.clePersonnage,
 		proprietaire = function(cle) return ns.db.global.personnages[cle] ~= nil end,

@@ -55,6 +55,7 @@ function Minicarte:OnEnable()
 	self:RegisterMessage("COMPAGNONS_COMMANDES_MAJ", "ActualiserPastille")
 	self:RegisterMessage("COMPAGNONS_CATALOGUE_MAJ", "ActualiserPastille")
 	C_Timer.After(3, function() self:ActualiserPastille() end)
+	C_Timer.After(10, function() self:ActualiserPastille() end)
 end
 
 function Minicarte:ActualiserPastille()
@@ -62,9 +63,14 @@ function Minicarte:ActualiserPastille()
 	local bouton = self.dbicon.GetMinimapButton and self.dbicon:GetMinimapButton(NOM)
 	if not bouton then return end
 	if not self.pastille then
-		local p = bouton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-		p:SetPoint("TOPRIGHT", bouton, "TOPRIGHT", 3, 3)
+		-- Cadre enfant au-dessus du bouton : sinon le texte passe sous l'icône et sa bordure.
+		local cadre = CreateFrame("Frame", nil, bouton)
+		cadre:SetAllPoints(bouton)
+		cadre:SetFrameLevel(bouton:GetFrameLevel() + 5)
+		local p = cadre:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		p:SetPoint("BOTTOMRIGHT", bouton, "BOTTOMRIGHT", 2, 0)
 		p:SetTextColor(1, 0.35, 0.3)
+		p:SetShadowOffset(1, -1)
 		self.pastille = p
 	end
 	local n = ns.Atelier:CompterPourMoi()

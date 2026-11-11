@@ -59,6 +59,7 @@ function Synchro.nouveau(o)
 	s.profils = o.profils
 	s.commandes = o.commandes or {}
 	s.prix = o.prix or {}
+	s.vus = o.vus or {} -- [cle] = dernier message reçu (heure) : qui a l'addon, même sans profil
 	s.surPrix = o.surPrix or function() end
 	s.prixEnAttente = {}
 	s.prixPlanifie = false
@@ -281,6 +282,9 @@ function Synchro:Recevoir(genre, charge, expediteur)
 		self.journal("warn", "protocole %s ignoré (attendu %d)", tostring(charge.v), Synchro.PROTOCOLE)
 		return
 	end
+
+	-- Un message valide prouve que l'expéditeur a l'addon, même s'il n'a encore scanné aucun métier.
+	self.vus[self.normaliser(expediteur)] = self.maintenant()
 
 	if genre == "HELLO" then
 		self:SurHello(charge, expediteur)

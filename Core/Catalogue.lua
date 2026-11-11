@@ -309,6 +309,15 @@ function Catalogue:Membres()
 		end
 	end
 
+	-- Membres vus sur le réseau qui n'ont encore scanné aucun métier : ils ont l'addon, on les montre quand même.
+	local presents = {}
+	for _, m in ipairs(liste) do presents[m.cle] = true end
+	for cle in pairs(self.vus or {}) do
+		if not presents[cle] and not propres[cle] then
+			liste[#liste + 1] = { cle = cle, nom = cle:match("^(%S+)") or cle, moi = false, metiers = {}, sansMetiers = true }
+		end
+	end
+
 	table.sort(liste, function(a, b)
 		local na, nb = normaliser(a.nom), normaliser(b.nom)
 		if na ~= nb then return na < nb end

@@ -17,6 +17,7 @@ local defauts = {
 		-- `schema` n'est volontairement pas ici : AceDB n'écrit pas les valeurs égales aux défauts,
 		-- or le Relais exige ce champ dans le fichier (voir OnInitialize).
 		personnages = {}, -- [clé perso] = { nom, royaume, classe, metiers = {}, maj }
+		vus = {},         -- membres ayant l'addon vus sur le réseau : [clé] = heure du dernier message
 		guilde = {},      -- copie synchronisée des membres (sprint synchro)
 		commandes = {},   -- (sprint commandes)
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
@@ -95,6 +96,7 @@ function Compagnons:OnEnable()
 
 	-- Base de recettes croisée avec les métiers connus ; mise à jour après chaque scan.
 	ns.catalogue = ns.Catalogue.nouveau(ns.Recettes, self.db.global.personnages, self.db.global.guilde)
+	ns.catalogue.vus = self.db.global.vus
 	self:RegisterMessage("COMPAGNONS_METIER_SCANNE", function()
 		ns.catalogue:Actualiser()
 		self:SendMessage("COMPAGNONS_CATALOGUE_MAJ")

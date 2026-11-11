@@ -80,6 +80,7 @@ ns.Textes.frFR = {
 	MEMBRES_NOMBRE = "%d membre(s) avec l'addon",
 	MEMBRES_EN_LIGNE_SEUL = "En ligne seulement",
 	MEMBRES_MOI = "moi",
+	MEMBRES_SANS_METIERS = "Métiers pas encore scannés",
 	MEMBRES_RECETTES = "%d recettes",
 	MEMBRES_AUCUN = "Personne à afficher pour l'instant. Ouvre tes métiers une fois ; les membres de la guilde qui ont l'addon apparaissent ici au fil de la synchro.",
 	COMMANDER = "Commander",

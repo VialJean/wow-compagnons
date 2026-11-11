@@ -103,6 +103,7 @@ function Fenetre:InitialiserLigneMembre(ligne, membre)
 		morceaux[#morceaux + 1] = string.format("%s %s |cffa89c86(%s)|r", m.nom, niveau,
 			string.format(L.MEMBRES_RECETTES, m.recettes))
 	end
+	if membre.sansMetiers then morceaux[1] = "|cffa89c86" .. L.MEMBRES_SANS_METIERS .. "|r" end
 	ligne.metiers:SetText(table.concat(morceaux, "   "))
 end
 

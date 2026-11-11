@@ -137,6 +137,13 @@ function Assistance:Afficher(contexte, ancre)
 		if not securise("création de l'assistance", self.Creer, self) then return end
 	end
 	self.contexte = contexte
+	self.ancre = ancre
+	-- Filet de sécurité : MAIL_CLOSED / TRADE_CLOSED ne suffisent pas toujours (fenêtre masquée autrement).
+	self.ancresSurveillees = self.ancresSurveillees or {}
+	if not self.ancresSurveillees[ancre] and ancre.HookScript then
+		self.ancresSurveillees[ancre] = true
+		ancre:HookScript("OnHide", function() Assistance:Fermer() end)
+	end
 	self.cadre:ClearAllPoints()
 	self.cadre:SetPoint("TOPLEFT", ancre, "TOPRIGHT", 4, 0)
 	self.cadre:Show()
@@ -164,6 +171,7 @@ end
 function Assistance:Actualiser()
 	local f = self.cadre
 	if not f or not self.contexte or not f:IsShown() then return end
+	if self.ancre and self.ancre.IsShown and not self.ancre:IsShown() then return self:Fermer() end
 	securise("actualisation de l'assistance", function()
 		local moi = ns.clePersonnage()
 		local commandes = ns.db.global.commandes

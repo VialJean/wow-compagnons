@@ -81,6 +81,7 @@ ns.Textes.enUS = {
 	MEMBRES_NOMBRE = "%d member(s) with the addon",
 	MEMBRES_EN_LIGNE_SEUL = "Online only",
 	MEMBRES_MOI = "you",
+	MEMBRES_SANS_METIERS = "Professions not scanned yet",
 	MEMBRES_RECETTES = "%d recipes",
 	MEMBRES_AUCUN = "No one to show yet. Open your professions once, and guildmates who run the addon appear here as they sync.",
 	COMMANDER = "Order",
