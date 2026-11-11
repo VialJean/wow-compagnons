@@ -33,9 +33,8 @@ end
 local function lireSacs()
 	local sacs = {}
 	local C = _G.C_Container
-	-- Sacs 0 à 4, plus le sac de composants (emplacement 5) s'il existe : un emplacement absent renvoie 0 case.
-	local nombreSacs = math.max(_G.NUM_BAG_SLOTS or 4, _G.NUM_TOTAL_EQUIPPED_BAG_SLOTS or 0,
-		(_G.Enum and _G.Enum.BagIndex and _G.Enum.BagIndex.ReagentBag) or 0)
+	-- Sacs 0 à 4, plus le sac de composants (emplacement 5, vérifié sur Forever) : un emplacement absent renvoie 0 case.
+	local nombreSacs = math.max(_G.NUM_BAG_SLOTS or 4, _G.NUM_TOTAL_EQUIPPED_BAG_SLOTS or 0, 5)
 	for bag = 0, nombreSacs do
 		local n = (C and C.GetContainerNumSlots and C.GetContainerNumSlots(bag))
 			or (_G.GetContainerNumSlots and _G.GetContainerNumSlots(bag)) or 0
