@@ -275,7 +275,15 @@ function Assistance:Placer()
 		local C = _G.C_Container
 		local prendre = C and C.PickupContainerItem or _G.PickupContainerItem
 		local fractionner = C and C.SplitContainerItem or _G.SplitContainerItem
+		-- Journal : ce qu'on demande et ce qui est vraiment dans le tas (pour comprendre une quantité inattendue).
+		local C2 = _G.C_Container
+		local info = C2 and C2.GetContainerItemInfo and C2.GetContainerItemInfo(p.bag, p.slot)
+		ns.log("info", "ui", "assistance : pose de %d × #%d (sac %d, case %d, tas de %s, %s)", p.n, p.itemID, p.bag, p.slot,
+			info and tostring(info.stackCount) or "?", p.partiel and "fractionné" or "tas entier")
 		if p.partiel then fractionner(p.bag, p.slot, p.n) else prendre(p.bag, p.slot) end
+		local curseur = _G.GetCursorInfo and { _G.GetCursorInfo() }
+		ns.log("info", "ui", "assistance : curseur après %s : %s", p.partiel and "fractionnement" or "prise",
+			curseur and curseur[1] and (tostring(curseur[1]) .. " " .. tostring(curseur[2])) or "vide")
 		if self.contexte == "echange" then
 			_G.ClickTradeButton(plan.libre)
 		else
@@ -292,4 +300,9 @@ function Assistance:Placer()
 		if _G.ClearCursor then _G.ClearCursor() end
 	end
 	self:Actualiser()
+	-- Ce qui est réellement posé une fois l'objet arrivé dans la fenêtre.
+	C_Timer.After(0.5, function()
+		local places = (self.contexte == "echange" and lireEchange or lireCourrier)()
+		ns.log("info", "ui", "assistance : posé %s dans la fenêtre (demandé %d)", tostring(places[p.itemID] or 0), p.n)
+	end)
 end
