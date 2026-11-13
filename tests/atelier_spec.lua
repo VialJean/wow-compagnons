@@ -85,7 +85,7 @@ describe("Atelier", function()
 		assert.are.equal(1, #atelier:Vue("pourmoi"))
 	end)
 
-	it("propose « Je prends », puis le cycle jusqu'à terminé", function()
+	it("propose « Je prends », puis le cycle jusqu'à livré", function()
 		local c = commandeDe("Wilgar Rolpik", 2329)
 		local actions = atelier:ActionsPossibles(c)
 		assert.are.equal(1, #actions)
@@ -98,12 +98,12 @@ describe("Atelier", function()
 
 		local suite = {}
 		for _, a in ipairs(atelier:ActionsPossibles(prise)) do suite[a.action] = true end
-		assert.is_true(suite.mats and suite.terminer and suite.liberer)
+		assert.is_true(suite.mats and suite.livrer and suite.liberer)
 		assert.is_nil(suite.annuler) -- je ne suis pas le client
 
 		local mats = assert(atelier:Agir(prise, "mats"))
-		local fini = assert(atelier:Agir(mats, "terminer"))
-		assert.are.equal("terminee", fini.statut)
+		local fini = assert(atelier:Agir(mats, "livrer"))
+		assert.are.equal("livree", fini.statut) -- le client doit encore confirmer
 		assert.are.equal(0, #atelier:ActionsPossibles(fini))
 	end)
 

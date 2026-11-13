@@ -213,6 +213,9 @@ function Fenetre:Creer()
 	securise("tableau des commandes", self.CreerCommandes, self, f)
 	securise("liste des membres", self.CreerMembres, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
+	securise("bandeau de version", function()
+		if ns.Avertissement then ns.Avertissement:AttacherBandeau(f) end
+	end)
 
 	f.pied = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.pied:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 8)

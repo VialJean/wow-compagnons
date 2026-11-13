@@ -8,7 +8,6 @@ _G.Compagnons = Compagnons -- accessible via /dump pendant le développement
 
 local GetMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 ns.VERSION = GetMeta(NOM, "Version") or "dev"
-ns.PROTOCOLE = 1   -- version du protocole de synchro (docs/protocole.md)
 ns.SCHEMA_DB = 1   -- version du format de CompagnonsDB
 ns.PREFIXE = "COMPAGNONS"
 
@@ -23,6 +22,7 @@ local defauts = {
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
 		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
 		prix = {},        -- prix unitaires des composants à l'hôtel des ventes : [itemID] = { p, t }
+		versions = { pairs = {} }, -- pairs en retard de protocole : [clé] = { v, vu, brut, averti } ; plusRecente (Core/Versions.lua)
 		livraisonCumul = {}, -- remises en plusieurs fois : [idCommande] = { recu = { [itemID] = n }, donne = { [itemID] = n } }
 		diag = { sessions = 0 },
 	},
@@ -31,6 +31,7 @@ local defauts = {
 		minimap = { hide = false },
 		observer = false,
 		stock = { suivi = true },
+		avertir = { auto = true, silencieux = false }, -- premier chuchotement automatique ; silencieux : ni fenêtre ni son
 		livraison = { suivi = true, confirmer = true, aide = true }, -- suivi des fabrications et des échanges ; confirmer : demande avant d'avancer une commande
 		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
@@ -104,7 +105,7 @@ function Compagnons:OnEnable()
 	end)
 
 	ns.log("info", "init", "Compagnons %s chargé (protocole %d, session %d)",
-		ns.VERSION, ns.PROTOCOLE, diag.sessions)
+		ns.VERSION, ns.Synchro.PROTOCOLE, diag.sessions)
 end
 
 function Compagnons:Commande(saisie)
@@ -127,6 +128,8 @@ function Compagnons:Commande(saisie)
 		self:GetModule("Reseau"):Etat(ns.Alias.action(arg))
 	elseif action == "minicarte" then
 		self:GetModule("Minicarte"):Basculer()
+	elseif action == "avertir" then
+		self:GetModule("Avertissement"):Commande(arg, arg2)
 	elseif action == "debug" then
 		local p = self.db.profile
 		p.debug = not p.debug
@@ -142,6 +145,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_OUVRIR)
 		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_SYNC)
+		print("  " .. L.AIDE_AVERTIR)
 		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_OBSERVER)
 		print("  " .. L.AIDE_COURSES)

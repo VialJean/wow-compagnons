@@ -238,8 +238,64 @@ describe("Synchro", function()
 		local a = r:client("Alice Durand")
 		a.profils[a.nom] = profilAleatoire(r.alea, a.nom, 10)
 		a.moteur:Recevoir("PROFILE_UPD", { v = 99, profil = profilAleatoire(r.alea, "Zed Zorro", 20) }, "Zed-Zorro")
+		a.moteur:Recevoir("PROFILE_UPD", { v = Synchro.PROTOCOLE - 1, profil = profilAleatoire(r.alea, "Zed Zorro", 20) }, "Zed-Zorro")
+		a.moteur:Recevoir("PROFILE_UPD", { profil = profilAleatoire(r.alea, "Zed Zorro", 20) }, "Zed-Zorro") -- sans version
 		a.moteur:Recevoir("PROFILE_UPD", { v = Synchro.PROTOCOLE, profil = profilAleatoire(r.alea, "Zed Zorro", 20) }, "Alice-Durand")
 		assert.is_nil(a.profils["Zed Zorro"])
+	end)
+
+	it("signale la version d'un pair même quand son message est ignoré, mais pas celle d'un message illisible ou de soi-même", function()
+		local r = nouveauReseau(11)
+		local a = r:client("Alice Durand")
+		local vus = {}
+		a.moteur.surVersion = function(cle, v, brut, version) vus[#vus + 1] = { cle, v, brut, version } end
+		a.moteur:Recevoir("HELLO", { v = 2, h = 1, n = 0 }, "Bastien-Roux")
+		a.moteur:Recevoir("HELLO", { v = 4, h = 1, n = 0, a = "0.6.0" }, "Zed-Zorro")
+		a.moteur:Recevoir("HELLO", { v = Synchro.PROTOCOLE, h = 1, n = 0, a = "0.5.0" }, "Camille-Petit")
+		a.moteur:Recevoir("HELLO", { v = Synchro.PROTOCOLE }, "Alice-Durand") -- ses propres messages
+		a.moteur:Recevoir("HELLO", { h = 1 }, "Mallory-Evil")                 -- sans version
+		a.moteur:Recevoir("HELLO", { v = "2" }, "Mallory-Evil")               -- version qui n'est pas un nombre
+		a.moteur:Recevoir("INCONNU", { v = 2 }, "Mallory-Evil")               -- genre inconnu
+		assert.are.equal(3, #vus)
+		assert.are.same({ "Bastien Roux", 2, "Bastien-Roux", nil }, vus[1])
+		assert.are.same({ "Zed Zorro", 4, "Zed-Zorro", "0.6.0" }, vus[2])
+		assert.are.same({ "Camille Petit", Synchro.PROTOCOLE, "Camille-Petit", "0.5.0" }, vus[3])
+		assert.is_nil(a.moteur.vus["Bastien Roux"]) -- un pair en retard n'est pas « vu » : rien n'est intégré
+		assert.is_not_nil(a.moteur.vus["Camille Petit"])
+	end)
+
+	it("annonce la version de l'addon dans HELLO", function()
+		local r = nouveauReseau(12)
+		local a = r:client("Alice Durand")
+		a.moteur.version = "0.5.0"
+		local hello
+		a.moteur.envoyerBrut = function(_, _, genre, charge) if genre == "HELLO" then hello = charge end end
+		a.moteur:Annoncer()
+		assert.are.equal("0.5.0", hello.a)
+		assert.are.equal(Synchro.PROTOCOLE, hello.v)
+	end)
+
+	it("un client resté en protocole 2 ne se mélange pas : rien n'est intégré, des deux côtés", function()
+		local r = nouveauReseau(10)
+		local a, b = r:client("Alice Durand"), r:client("Bastien Roux")
+		a.profils[a.nom] = profilAleatoire(r.alea, a.nom, 10)
+		b.profils[b.nom] = profilAleatoire(r.alea, b.nom, 11)
+		-- b parle l'ancien protocole : ses messages portent v = 2, et il ignore ceux de a
+		local envoyer = b.moteur.Envoyer
+		b.moteur.Envoyer = function(self, canal, cible, genre, charge)
+			charge.v = Synchro.PROTOCOLE - 1
+			return envoyer(self, canal, cible, genre, charge)
+		end
+		local recevoir = b.moteur.Recevoir
+		b.moteur.Recevoir = function(self, genre, charge, exp)
+			if charge.v ~= Synchro.PROTOCOLE - 1 then return end
+			return recevoir(self, genre, charge, exp)
+		end
+		r.t = 1000
+		connecter(a) ; connecter(b)
+		r:avancer(60)
+		assert.is_nil(a.profils[b.nom])
+		assert.is_nil(b.profils[a.nom])
 	end)
 
 	for _, taille in ipairs({ 5, 25, 50 }) do
@@ -322,10 +378,17 @@ describe("Synchro des commandes", function()
 		assert.are.equal(b.nom, a.commandes[c.id].assigne)
 
 		assert.is_not_nil(b.moteur:AgirCommande(c.id, "mats", b.nom))
-		assert.is_not_nil(b.moteur:AgirCommande(c.id, "terminer", b.nom))
+		assert.is_not_nil(b.moteur:AgirCommande(c.id, "livrer", b.nom))
 		r:avancer(2)
-		assert.are.equal("terminee", a.commandes[c.id].statut)
+		assert.are.equal("livree", a.commandes[c.id].statut) -- en attente de la confirmation du client
 		assert.are.equal(3, a.commandes[c.id].rev) -- trois transitions
+		assert.is_true(identiques({ a, b }))
+
+		assert.is_nil((b.moteur:AgirCommande(c.id, "confirmer", b.nom))) -- le crafteur ne confirme pas à la place du client
+		assert.is_not_nil(a.moteur:AgirCommande(c.id, "confirmer", a.nom))
+		r:avancer(2)
+		assert.are.equal("terminee", b.commandes[c.id].statut)
+		assert.are.equal(4, b.commandes[c.id].rev)
 		assert.is_true(identiques({ a, b }))
 	end)
 
@@ -336,10 +399,10 @@ describe("Synchro des commandes", function()
 		local ok, raison = b.moteur:AgirCommande(c.id, "annuler", b.nom)
 		assert.is_nil(ok)
 		assert.are.equal("interdit", raison)
-		assert.is_nil((b.moteur:AgirCommande(c.id, "terminer", b.nom)))
+		assert.is_nil((b.moteur:AgirCommande(c.id, "livrer", b.nom)))
 		b.moteur:AgirCommande(c.id, "prendre", b.nom)
 		r:avancer(2)
-		assert.is_nil((a.moteur:AgirCommande(c.id, "terminer", a.nom))) -- le client ne peut pas terminer
+		assert.is_nil((a.moteur:AgirCommande(c.id, "livrer", a.nom))) -- le client ne peut pas terminer
 		assert.is_not_nil(a.moteur:AgirCommande(c.id, "annuler", a.nom))
 		r:avancer(2)
 		assert.are.equal("annulee", b.commandes[c.id].statut)
@@ -362,6 +425,42 @@ describe("Synchro des commandes", function()
 		prise.hash = Commandes.hash(prise)
 		b.moteur:Recevoir("ORDER_UPD", { v = Synchro.PROTOCOLE, commande = prise }, "Mallory-Evil")
 		assert.are.equal("ouverte", b.commandes[c.id].statut)
+	end)
+
+	it("rejette un crafteur qui déclare lui-même la commande terminée, ou qui confirme à la place du client", function()
+		local r, a, b = deuxClients(24)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 1 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		local l = b.moteur:AgirCommande(c.id, "livrer", b.nom)
+		r:avancer(2)
+		assert.are.equal("livree", a.commandes[c.id].statut)
+		-- Bastien réécrit la livraison en « terminée » (révision suivante, son nom comme auteur)
+		local forge = copie(l)
+		forge.statut, forge.rev, forge.par, forge.maj = "terminee", l.rev + 1, b.nom, l.maj + 1
+		forge.hash = Commandes.hash(forge)
+		a.moteur:Recevoir("ORDER_UPD", { v = Synchro.PROTOCOLE, commande = forge }, "Bastien-Roux")
+		assert.are.equal("livree", a.commandes[c.id].statut)
+		-- Mallory, qui n'est pas le client, confirme
+		local tiers = copie(l)
+		tiers.statut, tiers.rev, tiers.par, tiers.maj = "terminee", l.rev + 1, "Mallory Evil", l.maj + 1
+		tiers.hash = Commandes.hash(tiers)
+		a.moteur:Recevoir("ORDER_UPD", { v = Synchro.PROTOCOLE, commande = tiers }, "Mallory-Evil")
+		assert.are.equal("livree", a.commandes[c.id].statut)
+	end)
+
+	it("une contestation par le client rend la commande au même crafteur, partout", function()
+		local r, a, b = deuxClients(25)
+		local c = a.moteur:CreerCommande({ client = a.nom, spell = 1001, qte = 1 })
+		r:avancer(2)
+		b.moteur:AgirCommande(c.id, "prendre", b.nom)
+		b.moteur:AgirCommande(c.id, "livrer", b.nom)
+		r:avancer(2)
+		assert.is_not_nil(a.moteur:AgirCommande(c.id, "contester", a.nom))
+		r:avancer(2)
+		assert.are.equal("prise", b.commandes[c.id].statut)
+		assert.are.equal(b.nom, b.commandes[c.id].assigne)
+		assert.is_true(identiques({ a, b }))
 	end)
 
 	it("départage deux crafteurs qui prennent en même temps de façon identique partout", function()
@@ -439,7 +538,7 @@ describe("Synchro des commandes", function()
 			local c = r:client(string.format("Membre%02d Test%02d", i, i))
 			c.profils[c.nom] = profilAleatoire(r.alea, c.nom, 1000 + i)
 		end
-		local actions = { "prendre", "mats", "terminer", "liberer", "annuler" }
+		local actions = { "prendre", "mats", "livrer", "confirmer", "contester", "liberer", "annuler" }
 		for _ = 1, taille * 15 do
 			r:avancer(1 + r.alea() * 30)
 			local c = r.clients[math.floor(r.alea() * taille) + 1]
@@ -514,7 +613,7 @@ describe("Progression des commandes", function()
 		r:avancer(2)
 		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 1 })))
 		b.moteur:AgirCommande(c.id, "prendre", b.nom)
-		b.moteur:AgirCommande(c.id, "terminer", b.nom)
+		b.moteur:AgirCommande(c.id, "livrer", b.nom)
 		assert.is_nil((b.moteur:AgirCommande(c.id, "progres", b.nom, { craftes = 1 })))
 	end)
 

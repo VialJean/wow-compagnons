@@ -1,7 +1,7 @@
 -- Rapprochement entre un échange (ou un courrier) et mes commandes. Lua pur, sans API du jeu.
 -- Côté crafteur uniquement : seul le crafteur assigné fait avancer une commande (voir Commandes).
 --   matériaux reçus du client      -> proposition « mats »     (commande prise)
---   objet fabriqué donné au client -> proposition « terminer » (commande prise ou matériaux reçus)
+--   objet fabriqué donné au client -> proposition « livrer » (commande prise ou matériaux reçus)
 -- Le rapprochement ne décide rien : il propose, le joueur confirme (ou l'option d'automatisme applique).
 local _, ns = ...
 
@@ -40,7 +40,7 @@ local function vide(t) return next(t) == nil end
 -- `cumul` (facultatif) : ce qui a déjà été remis pour chaque commande lors d'échanges ou de courriers précédents,
 -- { [idCommande] = { recu = { [itemID] = n }, donne = { [itemID] = n } } }. Une livraison faite en plusieurs fois
 -- s'additionne : la commande avance quand le total suffit.
--- Renvoie 1) une liste triée par ancienneté { { id, action = "mats" | "terminer" }, ... }
+-- Renvoie 1) une liste triée par ancienneté { { id, action = "mats" | "livrer" }, ... }
 -- et 2) le nouveau cumul (les commandes qui avancent en sont retirées, celles qui reçoivent une partie y sont ajoutées).
 function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne, cumul)
 	local restantRecu, restantDonne = copie(recu), copie(donne)
@@ -72,7 +72,7 @@ function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne, 
 			local dispo = restantDonne[recette.objet] or 0
 			if deja + dispo >= besoin then
 				restantDonne[recette.objet] = dispo - math.max(0, besoin - deja)
-				action = "terminer"
+				action = "livrer"
 			else
 				ajoute(fiche.donne, recette.objet, dispo) -- remise partielle : on la garde pour la suite
 				restantDonne[recette.objet] = 0
@@ -108,7 +108,7 @@ function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne, 
 			end
 		end
 
-		if action == "terminer" then
+		if action == "livrer" then
 			nouveau[o.id] = nil
 		elseif vide(fiche.recu) and vide(fiche.donne) then
 			nouveau[o.id] = nil

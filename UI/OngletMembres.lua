@@ -93,9 +93,16 @@ function Fenetre:InitialiserLigneMembre(ligne, membre)
 
 	local r, g, b = couleurClasse(membre.classe)
 	ligne.nom:SetTextColor(r, g, b)
-	ligne.nom:SetText(membre.moi and (membre.nom .. " |cffa89c86(" .. L.MEMBRES_MOI .. ")|r") or membre.nom)
+	local nom = membre.moi and (membre.nom .. " |cffa89c86(" .. L.MEMBRES_MOI .. ")|r") or membre.nom
+	local versionAddon = ns.Reseau and ns.Reseau.versionAddon and ns.Reseau.versionAddon[membre.cle]
+	if versionAddon then nom = nom .. " |cff7a7060" .. versionAddon .. "|r" end
+	ligne.nom:SetText(nom)
 	local enLigne = ns.estEnLigne and ns.estEnLigne(membre.cle)
-	ligne.etat:SetText(enLigne and ("|cff5cd65c" .. L.EN_LIGNE .. "|r") or ("|cffa89c86" .. L.HORS_LIGNE .. "|r"))
+	if membre.obsolete then
+		ligne.etat:SetText("|cffff4040" .. L.VERSION_OBSOLETE_MEMBRE .. "|r")
+	else
+		ligne.etat:SetText(enLigne and ("|cff5cd65c" .. L.EN_LIGNE .. "|r") or ("|cffa89c86" .. L.HORS_LIGNE .. "|r"))
+	end
 
 	local morceaux = {}
 	for _, m in ipairs(membre.metiers) do
@@ -104,6 +111,7 @@ function Fenetre:InitialiserLigneMembre(ligne, membre)
 			string.format(L.MEMBRES_RECETTES, m.recettes))
 	end
 	if membre.sansMetiers then morceaux[1] = "|cffa89c86" .. L.MEMBRES_SANS_METIERS .. "|r" end
+	if membre.obsolete then morceaux[#morceaux + 1] = "|cffff7070" .. L.VERSION_OBSOLETE_AIDE .. "|r" end
 	ligne.metiers:SetText(table.concat(morceaux, "   "))
 end
 
@@ -111,8 +119,23 @@ function Fenetre:RafraichirMembres()
 	local vue = self.vueMembres
 	if not vue or not self.cadre or not self.cadre:IsShown() or self.onglet ~= 3 or not ns.catalogue then return end
 
+	-- Les membres en retard de version : signalés, et ajoutés à la liste s'ils n'y figurent pas (leurs messages sont ignorés,
+	-- le catalogue ne les connaît donc pas toujours).
+	local retard = {}
+	if ns.Avertissement then
+		for _, p in ipairs((ns.Avertissement:Etat())) do retard[p.cle] = true end
+	end
 	local liste = {}
-	for _, membre in ipairs(ns.catalogue:Membres()) do
+	local membres = ns.catalogue:Membres()
+	local presents = {}
+	for _, membre in ipairs(membres) do presents[membre.cle] = true end
+	for cle in pairs(retard) do
+		if not presents[cle] then
+			membres[#membres + 1] = { cle = cle, nom = cle, metiers = {}, sansMetiers = true }
+		end
+	end
+	for _, membre in ipairs(membres) do
+		membre.obsolete = retard[membre.cle] == true
 		local garde = true
 		if self.membresEnLigne and not (ns.estEnLigne and ns.estEnLigne(membre.cle)) then garde = false end
 		if garde and self.metierMembres then

@@ -41,7 +41,7 @@ local function hex(r, g, b)
 end
 
 local function estFinale(o)
-	return o.statut == "terminee" or o.statut == "annulee"
+	return o.statut == "livree" or o.statut == "terminee" or o.statut == "annulee"
 end
 
 local function nomRecette(ctx, spellID)

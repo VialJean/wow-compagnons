@@ -53,6 +53,7 @@ function Reseau:OnEnable()
 	Deflate = LibStub("LibDeflate")
 
 	self.enLigne = {}
+	self.versionAddon = {} -- [clé] = version de l'addon annoncée par un pair à jour (informatif)
 	self.moteur = ns.Synchro.nouveau({
 		donnees = ns.Recettes,
 		profils = ns.db.global.guilde,
@@ -60,6 +61,8 @@ function Reseau:OnEnable()
 		prix = ns.db.global.prix,
 		vus = ns.db.global.vus,
 		surPrix = function() Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end,
+		version = ns.VERSION,
+		surVersion = function(cle, v, brut, a) self:SurVersion(cle, v, brut, a) end,
 		moi = ns.clePersonnage,
 		proprietaire = function(cle) return ns.db.global.personnages[cle] ~= nil end,
 		envoyer = function(canal, cible, genre, charge) self:Envoyer(canal, cible, genre, charge) end,
@@ -76,6 +79,7 @@ function Reseau:OnEnable()
 	self:RegisterComm(ns.PREFIXE, "SurMessage")
 	self:RegisterMessage("COMPAGNONS_METIER_SCANNE", "SurScan")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE", "SurRoster")
+	self:RegisterEvent("PLAYER_REGEN_ENABLED", "PrevenirAuto") -- un chuchotement refusé en combat repart après
 
 	-- Nos personnages entrent dans la copie locale, sans rien diffuser tant que rien n'a changé.
 	self:PublierPersonnages(false)
@@ -116,6 +120,66 @@ function Reseau:SurMessage(_, texte, canal, expediteur)
 	end
 	ns.log("sync", "sync", "<- %s %s %s (%d octets)", canal, tostring(expediteur), tostring(genre), #texte)
 	securise("traitement", self.moteur.Recevoir, self.moteur, genre, charge, expediteur)
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- Pairs en retard de version (docs/v5.md, §2.7)
+-- ---------------------------------------------------------------------------------------------
+
+--- La synchro nous donne la version de protocole de chaque expéditeur, même quand son message est ignoré.
+function Reseau:SurVersion(cle, v, brut, a)
+	local etat = ns.db.global.versions
+	local evenement = ns.Versions.noter(etat, cle, v, time(), ns.Synchro.PROTOCOLE, brut)
+	if (evenement == "ajour" or evenement == "misajour") and type(a) == "string" then
+		self.versionAddon[cle] = a:sub(1, 16)
+	end
+	if evenement == "nouveau" or evenement == "plusrecente" or evenement == "misajour" then
+		ns.log("warn", "sync", "version de protocole %s : %s (%s)", tostring(v), cle, evenement)
+		Compagnons:SendMessage("COMPAGNONS_VERSION_MAJ", evenement, cle)
+	end
+	if evenement == "nouveau" then self:PrevenirAuto() end
+end
+
+local function envoyerChuchotement(texte, cible)
+	local envoyer = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+	return pcall(envoyer, texte, "WHISPER", nil, cible)
+end
+
+--- Écrit, par un chuchotement ordinaire (lisible sans l'addon), aux pairs de la liste. Renvoie le nombre de messages envoyés.
+-- Un envoi par seconde : le serveur limite les messages envoyés d'affilée.
+function Reseau:Prevenir(liste)
+	local etat, n = ns.db.global.versions, 0
+	for i, pair in ipairs(liste) do
+		ns.Versions.marquer(etat, pair.cle, time()) -- marqué tout de suite : un seul message par personne, même en cas de ré-entrée
+		C_Timer.After((i - 1) * 1, function()
+			local ok, erreur = envoyerChuchotement(L.VERSION_CHUCHOTEMENT, pair.brut)
+			ns.log(ok and "info" or "erreur", "sync", "chuchotement de mise à jour à %s : %s", pair.brut, ok and "envoyé" or tostring(erreur))
+		end)
+		n = n + 1
+	end
+	return n
+end
+
+--- Premier chuchotement, automatique, aux pairs qu'on n'a jamais prévenus (option `avertir.auto`). Jamais en combat.
+function Reseau:PrevenirAuto()
+	if not ns.db.profile.avertir.auto or InCombatLockdown() then return end
+	local liste = ns.Versions.aPrevenir(ns.db.global.versions, time(), ns.Synchro.PROTOCOLE, true)
+	if #liste > 0 then self:Prevenir(liste) end
+end
+
+--- Bouton « Les prévenir » : tous ceux qu'on n'a pas prévenus depuis un jour. Un clic du joueur.
+function Reseau:PrevenirTous()
+	if InCombatLockdown() then
+		Compagnons:Print(L.VERSION_COMBAT)
+		return
+	end
+	local liste = ns.Versions.aPrevenir(ns.db.global.versions, time(), ns.Synchro.PROTOCOLE, false)
+	if #liste == 0 then
+		Compagnons:Print(L.VERSION_DEJA_PREVENUS)
+		return
+	end
+	Compagnons:Print(string.format(L.VERSION_PREVENUS, self:Prevenir(liste)))
+	Compagnons:SendMessage("COMPAGNONS_VERSION_MAJ", "prevenus")
 end
 
 -- ---------------------------------------------------------------------------------------------

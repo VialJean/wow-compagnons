@@ -36,7 +36,8 @@ function Alertes:SurCommande(_, _, avant, apres)
 			genre = "nouvelle"
 		end
 	elseif miens[apres.client] and avant.statut ~= apres.statut then
-		if apres.statut == "terminee" then genre = "terminee"
+		if apres.statut == "livree" then genre = "livree"
+		elseif apres.statut == "terminee" then genre = "terminee"
 		elseif apres.statut == "prise" then genre = "prise"
 		elseif apres.statut == "ouverte" then genre = "liberee"
 		end
@@ -66,7 +67,7 @@ end
 --- Transforme la file en messages (un par genre), puis les affiche si l'on n'est pas en combat.
 function Alertes:Vider()
 	if #self.file > 0 then
-		local groupes = { nouvelle = {}, terminee = {}, prise = {}, liberee = {} }
+		local groupes = { nouvelle = {}, livree = {}, terminee = {}, prise = {}, liberee = {} }
 		for _, a in ipairs(self.file) do table.insert(groupes[a.genre], a.commande) end
 		self.file = {}
 
@@ -91,6 +92,7 @@ function Alertes:Vider()
 		else
 			ajouter(L.ALERTE_NOUVELLE, groupes.nouvelle, "pourmoi")
 		end
+		ajouter(L.ALERTE_LIVREE, groupes.livree, "mes")
 		ajouter(L.ALERTE_TERMINEE, groupes.terminee, "mes")
 		ajouter(L.ALERTE_PRISE, groupes.prise, "mes")
 		ajouter(L.ALERTE_LIBEREE, groupes.liberee, "mes")

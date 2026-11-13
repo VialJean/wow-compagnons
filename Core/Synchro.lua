@@ -3,7 +3,7 @@
 -- le tester avec des dizaines de clients simulés.
 --
 -- Messages (voir docs/protocole.md) :
---   HELLO        GUILD    { v, h, n }              annonce : hash global et nombre de profils
+--   HELLO        GUILD    { v, h, n, a }           annonce : hash global, nombre de profils, version de l'addon (informatif)
 --   PRET         WHISPER  { v, h }                 un pair dont le hash diffère se propose (minuscule)
 --   HASHES       WHISPER  { v, liste = { p = { [cle] = { maj, hash } }, c = { [id] = { rev, maj, par, hash } } } }
 --                                                  envoyé par l'annonceur au premier pair prêt
@@ -27,7 +27,9 @@ local Synchro = {}
 Synchro.__index = Synchro
 ns.Synchro = Synchro
 
-Synchro.PROTOCOLE = 2
+-- Version 3 : état « livrée » et confirmation de réception par le client (docs/protocole.md, « Historique »). Un message d'une
+-- autre version est ignoré : les versions 2 (0.4.x) et 3 (0.5) ne se synchronisent plus entre elles.
+Synchro.PROTOCOLE = 3
 
 local FENETRE_PARTENAIRE = 20 -- secondes pendant lesquelles on ne synchronise qu'avec un seul pair
 local DELAI_REPONSE = 2       -- les pairs répondent après un délai aléatoire borné par cette valeur
@@ -52,6 +54,9 @@ local DELAI_PRIX = 5          -- regroupe les prix relevés à l'hôtel des vent
 --   prix          table itemID -> { p, t } (prix unitaires des composants)
 --   surPrix       fonction(ids) appelée quand des prix sont modifiés depuis le réseau
 --   surCommande   fonction(id, avant, apres) appelée quand une commande change depuis le réseau
+--   version       version de l'addon (texte), annoncée dans HELLO (champ `a`, informatif)
+--   surVersion    fonction(cle, v, brut, a) appelée pour tout message dont la version de protocole est lisible, **avant** qu'un
+--                 message d'une autre version soit ignoré : c'est ce qui permet de signaler un pair en retard (Core/Versions.lua)
 --   journal       fonction(niveau, format, ...)
 function Synchro.nouveau(o)
 	local s = setmetatable({}, Synchro)
@@ -72,6 +77,8 @@ function Synchro.nouveau(o)
 	s.normaliser = o.normaliser or function(brut) return (brut:gsub("%-", " ")) end
 	s.surMaj = o.surMaj or function() end
 	s.surCommande = o.surCommande or function() end
+	s.version = o.version
+	s.surVersion = o.surVersion or function() end
 	s.journal = o.journal or function() end
 	s.partenaire = nil
 	s.partenaireJusqua = 0
@@ -136,7 +143,7 @@ function Synchro:Annoncer()
 	self.partenaireJusqua = 0
 	self:Nettoyer()
 	self:Envoyer("GUILD", nil, "HELLO", {
-		v = Synchro.PROTOCOLE, h = self:HashGlobal(), n = self:Compter(), hp = self:HashPrix(),
+		v = Synchro.PROTOCOLE, h = self:HashGlobal(), n = self:Compter(), hp = self:HashPrix(), a = self.version,
 	})
 end
 
@@ -278,6 +285,8 @@ function Synchro:Recevoir(genre, charge, expediteur)
 	if self.normaliser(expediteur) == self.moi() then return end
 	self.stats.recus = self.stats.recus + 1
 
+	-- La version se lit avant tout le reste : c'est le seul moyen de savoir qu'un pair est resté en arrière (ou a de l'avance).
+	if type(charge.v) == "number" then self.surVersion(self.normaliser(expediteur), charge.v, expediteur, charge.a) end
 	if charge.v ~= Synchro.PROTOCOLE then
 		self.journal("warn", "protocole %s ignoré (attendu %d)", tostring(charge.v), Synchro.PROTOCOLE)
 		return

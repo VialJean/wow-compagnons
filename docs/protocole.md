@@ -1,6 +1,7 @@
-# Protocole Compagnons — version 1 (brouillon)
+# Protocole Compagnons — version 3
 
-Ce document fait foi pour le format des SavedVariables et des messages addon.
+Ce document fait foi pour le format des SavedVariables et des messages addon. Il décrit le **protocole de synchro, version 3**
+(0.5) ; le **format des SavedVariables** a sa propre version, `schema` (1). L'historique des versions est en fin de document.
 Le parseur du Relais (dépôt `wow-compagnons-services`) vérifie `schema` et refuse un format inconnu.
 
 ## SavedVariables
@@ -51,9 +52,12 @@ met le royaume : `UnitName("player")` donne `"Jean", "Vialjean"`, et `GetUnitNam
 Préfixe `COMPAGNONS`. Charge utile : `LibSerialize` → `LibDeflate:CompressDeflate` → `LibDeflate:EncodeForWoWAddonChannel`.
 Les notes saisies par les joueurs passent en texte clair via `SendAddonMessageLogged`.
 
-Chaque message est `{ genre, charge }` avant codage ; `charge.v` porte la version du protocole (actuellement **2**),
-un message d'une autre version est ignoré. La version 2 ajoute les commandes et change le format de `HASHES`
-et de `PROFILE_REQ`.
+Chaque message est `{ genre, charge }` avant codage ; `charge.v` porte la version du protocole (actuellement **3**),
+un message d'une autre version est ignoré (journalisé, jamais intégré, jamais répondu).
+
+**Invariant : ne jamais changer l'enveloppe.** `{ genre, charge }`, `charge.v` numérique, et le codage `LibSerialize` →
+`LibDeflate` → `EncodeForWoWAddonChannel` restent identiques d'une version à l'autre. C'est ce qui permet à une version
+de lire le `v` d'un pair plus récent ou plus ancien et de le signaler au joueur, même quand tout le reste est incompatible.
 
 | Type | Canal | Charge | Rôle |
 |---|---|---|---|
@@ -102,22 +106,27 @@ Une commande est un instantané complet, avec un numéro de révision `rev` (une
   crafteur = nil,            -- crafteur désigné, ou nil : ouvert à tous
   mats = "partie",           -- "tout" | "partie" | "crafteur" : qui fournit les composants
   note = "",                 -- 120 caractères au plus
-  statut = "ouverte",        -- ouverte | prise | mats | terminee | annulee
+  statut = "ouverte",        -- ouverte | prise | mats | livree | terminee | annulee
   assigne = nil,             -- crafteur qui a pris la commande
   rev = 0, cree = 1731180062, maj = 1731180062, par = "Prénom Nom",
   histo = { { t, par, statut } } }   -- dix dernières transitions
 ```
 
-Cycle de vie : `ouverte` → `prise` → `mats` (mats reçus) → `terminee`. Le crafteur peut **libérer** (retour à `ouverte`),
-le client peut **annuler** tant que la commande n'est pas finale.
+Cycle de vie : `ouverte` → `prise` → `mats` (mats reçus) → `livree` (livrée, en attente de confirmation) → `terminee`.
+Le crafteur **livre** ; le client **confirme** la réception (`terminee`) ou la **conteste** (retour à `prise`, même crafteur).
+Si le client est aussi le crafteur assigné, la livraison termine directement la commande. Le crafteur peut **libérer** avant la
+livraison (retour à `ouverte`), le client peut **annuler** tant que la commande n'est pas finale.
 
 | Action | Depuis | Qui |
 |---|---|---|
 | prendre | ouverte | n'importe quel membre, ou seulement le crafteur désigné |
 | mats | prise | le crafteur assigné |
-| terminer | prise, mats | le crafteur assigné |
+| livrer | prise, mats | le crafteur assigné (la commande est `terminee` d'emblée s'il est aussi le client) |
+| confirmer | livree | le client |
+| contester | livree | le client (retour à `prise`, le crafteur assigné ne change pas) |
 | libérer | prise, mats | le crafteur assigné |
-| annuler | ouverte, prise, mats | le client |
+| annuler | ouverte, prise, mats, livree | le client |
+| progres | prise, mats | le crafteur assigné (nombre fabriqué, vers le haut seulement) |
 
 ### Règles
 
@@ -125,14 +134,32 @@ le client peut **annuler** tant que la commande n'est pas finale.
 - **Commandes : plus de révisions gagne.** À révision égale (deux crafteurs qui prennent en même temps), l'action la plus
   ancienne l'emporte (`maj`), puis l'ordre alphabétique de l'auteur (`par`), puis le hash : tous les clients tranchent pareil.
 - **Droits vérifiés à la réception.** Quand la copie reçue a une révision de plus que la nôtre, la transition doit être
-  permise à son auteur (tableau ci-dessus), sinon elle est refusée. Une annulation ne vaut que de la main du client,
-  une prise ou une avancée que de celle du crafteur assigné.
+  permise à son auteur (tableau ci-dessus), sinon elle est refusée. Une annulation, une confirmation ou une contestation ne
+  valent que de la main du client ; une prise, une avancée ou une livraison que de celle du crafteur assigné : **un crafteur ne
+  peut pas déclarer lui-même la commande terminée**. Une copie plus lointaine (plusieurs révisions d'avance) n'est vérifiée que
+  pour sa cohérence interne : l'auteur de la dernière transition y a droit (`Commandes.valider`).
 - **Un personnage ne se laisse pas écraser** : un profil reçu pour l'un de nos personnages est ignoré.
 - **Rien n'est cru sur parole** : les hashes du réseau sont recalculés ; profils et commandes sont validés (tailles
   maximales, recette connue de la base, cohérence des états) et les messages invalides sont ignorés.
-- **Oubli** : une commande terminée ou annulée depuis plus de 7 jours disparaît chez tous, et n'est pas réimportée.
+- **Oubli** : une commande terminée ou annulée, ou livrée sans confirmation, depuis plus de 7 jours disparaît chez tous, et
+  n'est pas réimportée.
   Au plus 600 commandes sont gardées.
 - **Présence en ligne** : lue dans la liste de guilde du jeu, pas dans le protocole.
 
 Le comportement est vérifié hors jeu par `tests/synchro_spec.lua` (2 à 50 clients simulés, connexions, scans et
 commandes aléatoires, latence, messages forgés) : tous les clients convergent vers le même état.
+
+## Historique
+
+| Protocole | Addon | Changements |
+|---|---|---|
+| 1 | 0.1 | profils de personnages, `HELLO` / `PRET` / `HASHES` / `PROFILE*` |
+| 2 | 0.2 à 0.4 | commandes (`ORDER*`), format de `HASHES` et `PROFILE_REQ` ; prix (`PRIX*`, `hp`, `x`) et progression des fabrications ajoutés **sans** changer de version (champs facultatifs ignorés par les anciennes) |
+| 3 | 0.5 | état `livree`, actions `livrer`, `confirmer`, `contester` (remplacent `terminer`) ; le client écrit désormais des transitions |
+
+**Pourquoi une rupture en 3.** Un état inconnu fait rejeter la commande par une version 2, et une confirmation écrite par le client
+(auteur différent du crafteur) échouerait à sa validation, avec des demandes répétées à chaque synchro. Il n'y a donc pas de
+passerelle : les 0.4.x et la 0.5 ne se synchronisent plus entre elles, et la 0.5 signale aux joueurs de mettre à jour.
+
+**Données déjà enregistrées.** Une commande `terminee` d'avant la 0.5 reste `terminee` (sans attente de confirmation), et reste
+valide avec son crafteur comme auteur. Le format des SavedVariables ne change pas : `schema` reste 1.

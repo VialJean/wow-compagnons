@@ -56,7 +56,7 @@ function Stock.ancien(maj, maintenant)
 end
 
 local function estFinale(o)
-	return o.statut == "terminee" or o.statut == "annulee"
+	return o.statut == "livree" or o.statut == "terminee" or o.statut == "annulee"
 end
 
 --- Liste de courses : les composants à réunir pour mes commandes en cours.

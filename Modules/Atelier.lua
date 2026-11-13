@@ -71,7 +71,7 @@ function Atelier:PourMetier(idMetier)
 	for _, o in ipairs(ns.Commandes.miennes(self:Commandes(), miens)) do
 		local r = ns.Recettes.recettes[o.spell]
 		if r and r.metier == idMetier and not vues[o.id] and o.assigne and miens[o.assigne]
-			and not ns.Commandes.estFinale(o) then
+			and not ns.Commandes.estAchevee(o) then
 			liste[#liste + 1] = o
 		end
 	end
@@ -97,8 +97,11 @@ function Atelier:ActionsPossibles(o)
 		end
 	elseif (o.statut == "prise" or o.statut == "mats") and o.assigne and miens[o.assigne] then
 		if o.statut == "prise" then ajouter("mats", L.ACTION_MATS, true) end
-		ajouter("terminer", L.ACTION_TERMINER, o.statut == "mats")
+		ajouter("livrer", L.ACTION_LIVRER, o.statut == "mats")
 		ajouter("liberer", L.ACTION_LIBERER, false)
+	elseif o.statut == "livree" and miens[o.client] then
+		ajouter("confirmer", L.ACTION_CONFIRMER, true)
+		ajouter("contester", L.ACTION_CONTESTER, false)
 	end
 	if miens[o.client] and not ns.Commandes.estFinale(o) then
 		ajouter("annuler", L.ACTION_ANNULER, false)
@@ -111,6 +114,7 @@ function Atelier.LibelleStatut(o)
 	if o.statut == "ouverte" then return L.STATUT_OUVERTE, "ffe0b252" end
 	if o.statut == "prise" then return string.format(L.STATUT_PRISE, o.assigne or "?"), "ff7fb2ff" end
 	if o.statut == "mats" then return L.STATUT_MATS, "ff7fb2ff" end
+	if o.statut == "livree" then return L.STATUT_LIVREE, "ffe8a94f" end
 	if o.statut == "terminee" then return L.STATUT_TERMINEE, "ff5fd068" end
 	return L.STATUT_ANNULEE, "ffa89c86"
 end

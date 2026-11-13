@@ -102,7 +102,7 @@ function Echanges:Demander(p)
 	local o = ns.db.global.commandes[p.id]
 	local recette = o and ns.Recettes.recettes[o.spell]
 	if not o or not recette then return end
-	local modele = p.action == "mats" and L.LIVRAISON_MATS or L.LIVRAISON_TERMINER
+	local modele = p.action == "mats" and L.LIVRAISON_MATS or L.LIVRAISON_LIVRER
 	StaticPopup_Show("COMPAGNONS_LIVRAISON", string.format(modele, o.client, o.qte, recette.nom or "?"), nil, p)
 end
 
@@ -112,7 +112,7 @@ function Echanges:Appliquer(p)
 	if not moteur or not o or not o.assigne then return end
 	if moteur:AgirCommande(p.id, p.action, o.assigne) then
 		local recette = ns.Recettes.recettes[o.spell]
-		local modele = p.action == "mats" and L.LIVRAISON_FAIT_MATS or L.LIVRAISON_FAIT_TERMINER
+		local modele = p.action == "mats" and L.LIVRAISON_FAIT_MATS or L.LIVRAISON_FAIT_LIVRER
 		Compagnons:Print(string.format(modele, recette and recette.nom or "?"))
 		Compagnons:SendMessage("COMPAGNONS_COMMANDES_MAJ")
 	end

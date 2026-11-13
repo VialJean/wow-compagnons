@@ -44,6 +44,8 @@ function Minicarte:OnEnable()
 				end
 			end
 			if miennes > 0 then tooltip:AddLine(string.format(L.MINICARTE_EN_COURS, miennes), 0.5, 0.7, 1) end
+			local alerte = ns.Avertissement and ns.Avertissement:Resume()
+			if alerte then tooltip:AddLine(alerte, 1, 0.25, 0.25, true) end
 			tooltip:AddLine(L.MINICARTE_AIDE, 0.66, 0.61, 0.53)
 		end,
 	})
@@ -54,6 +56,7 @@ function Minicarte:OnEnable()
 	-- Pastille : nombre de commandes que l'on peut remplir.
 	self:RegisterMessage("COMPAGNONS_COMMANDES_MAJ", "ActualiserPastille")
 	self:RegisterMessage("COMPAGNONS_CATALOGUE_MAJ", "ActualiserPastille")
+	self:RegisterMessage("COMPAGNONS_VERSION_MAJ", "ActualiserPastille")
 	C_Timer.After(3, function() self:ActualiserPastille() end)
 	C_Timer.After(10, function() self:ActualiserPastille() end)
 end
@@ -72,7 +75,16 @@ function Minicarte:ActualiserPastille()
 		p:SetTextColor(1, 0.35, 0.3)
 		p:SetShadowOffset(1, -1)
 		self.pastille = p
+		-- « ! » rouge : synchro coupée avec des membres, ou mise à jour requise (distinct du compteur de commandes)
+		local a = cadre:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+		a:SetPoint("TOPRIGHT", bouton, "TOPRIGHT", 5, 5)
+		a:SetTextColor(1, 0.1, 0.1)
+		a:SetShadowOffset(1, -1)
+		a:SetText("!")
+		a:Hide()
+		self.alerte = a
 	end
+	self.alerte:SetShown((ns.Avertissement and ns.Avertissement:Resume()) ~= nil)
 	local n = ns.Atelier:CompterPourMoi()
 	self.pastille:SetText(n > 0 and tostring(n) or "")
 end

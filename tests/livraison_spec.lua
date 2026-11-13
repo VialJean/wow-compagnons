@@ -38,7 +38,7 @@ describe("Livraison.rapprocher", function()
 
 	it("propose « terminer » quand l'objet fabriqué est remis en quantité suffisante", function()
 		local cmds = lister({ commande("a", { statut = "mats" }) })
-		assert.are.equal("terminer", Livraison.rapprocher(cmds, donnees, "Jean Vialjean", "Spellus", {}, { [500] = 3 })[1].action)
+		assert.are.equal("livrer", Livraison.rapprocher(cmds, donnees, "Jean Vialjean", "Spellus", {}, { [500] = 3 })[1].action)
 		assert.are.equal(0, #Livraison.rapprocher(cmds, donnees, "Jean Vialjean", "Spellus", {}, { [500] = 2 }))
 	end)
 
@@ -127,7 +127,7 @@ describe("Livraison.rapprocher : remises en plusieurs fois", function()
 		assert.are.equal(0, #p1)
 		assert.are.equal(2, cumul.a.donne[500])
 		local p2, cumul2 = Livraison.rapprocher(cmds, donnees, moi, partenaire, {}, { [500] = 1 }, cumul)
-		assert.are.equal("terminer", p2[1].action)
+		assert.are.equal("livrer", p2[1].action)
 		assert.is_nil(cumul2.a)
 	end)
 

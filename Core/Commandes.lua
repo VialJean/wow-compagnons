@@ -7,7 +7,7 @@
 --     crafteur = nil | "Prénom Nom",    -- crafteur désigné, ou nil : ouvert à tous
 --     mats = "tout" | "partie" | "crafteur",   -- qui fournit les composants
 --     note = "",                        -- 120 caractères au plus
---     statut = "ouverte" | "prise" | "mats" | "terminee" | "annulee",
+--     statut = "ouverte" | "prise" | "mats" | "livree" | "terminee" | "annulee",
 --     assigne = nil | "Prénom Nom",     -- crafteur qui a pris la commande
 --     rev = 0,                          -- numéro de révision : un par transition
 --     cree = 1731180062, maj = 1731180062,   -- création, dernière transition
@@ -15,9 +15,11 @@
 --     histo = { { t, par, statut }, ... },   -- dernières transitions (10 au plus)
 --   }
 --
--- Cycle de vie : ouverte -> prise -> mats reçus -> terminée.
--- Le crafteur peut libérer (retour à « ouverte »), le client peut annuler. Seul le client annule,
--- seul le crafteur assigné fait avancer la commande.
+-- Cycle de vie : ouverte -> prise -> mats reçus -> livrée (en attente de confirmation) -> terminée.
+-- Le crafteur livre (`livrer`), le client confirme la réception (`confirmer`) ou la conteste (`contester` : retour à « prise »).
+-- Si le client est aussi le crafteur assigné, la livraison termine directement la commande : personne n'a à confirmer.
+-- Le crafteur peut libérer avant la livraison (retour à « ouverte »), le client peut annuler. Seul le client annule et
+-- confirme, seul le crafteur assigné fait avancer la commande jusqu'à la livraison.
 local _, ns = ...
 
 local Commandes = {}
@@ -30,7 +32,7 @@ local MAX_ID = 96
 local MAX_QTE = 9999
 local MAX_HISTO = 10
 
-local STATUTS = { ouverte = true, prise = true, mats = true, terminee = true, annulee = true }
+local STATUTS = { ouverte = true, prise = true, mats = true, livree = true, terminee = true, annulee = true }
 local MATS = { tout = true, partie = true, crafteur = true }
 
 local compteur = 0
@@ -44,9 +46,14 @@ function Commandes.estFinale(o)
 	return o.statut == "terminee" or o.statut == "annulee"
 end
 
---- Une commande finale dont la dernière transition date de plus de 7 jours : à oublier partout.
+--- Il n'y a plus rien à fabriquer ni à fournir : livrée, terminée ou annulée.
+function Commandes.estAchevee(o)
+	return o.statut == "livree" or Commandes.estFinale(o)
+end
+
+--- Une commande finale, ou livrée sans confirmation, dont la dernière transition date de plus de 7 jours : à oublier partout.
 function Commandes.perimee(o, maintenant)
-	return Commandes.estFinale(o) and maintenant - o.maj > Commandes.DUREE_CONSERVATION
+	return Commandes.estAchevee(o) and maintenant - o.maj > Commandes.DUREE_CONSERVATION
 end
 
 --- Nombre d'exemplaires fabriqués par le crafteur assigné (0 si rien n'est enregistré).
@@ -126,12 +133,21 @@ function Commandes.valider(brut, donnees)
 	end
 
 	-- Cohérence : une commande en cours a un crafteur, une commande ouverte n'en a pas.
-	local enCours = c.statut == "prise" or c.statut == "mats" or c.statut == "terminee"
+	local enCours = c.statut == "prise" or c.statut == "mats" or c.statut == "livree" or c.statut == "terminee"
 	if enCours and not c.assigne then return nil end
 	if c.statut == "ouverte" and c.assigne then return nil end
-	-- L'auteur de la dernière transition doit y avoir droit : le client annule, le crafteur assigné avance.
+	-- L'auteur de la dernière transition doit y avoir droit : le client annule, confirme et conteste ; le crafteur assigné
+	-- prend, avance et livre. Une commande « terminée » par le crafteur seul est le format d'avant la confirmation (ou la
+	-- commande d'un client qui est son propre crafteur) : elle reste lisible.
 	if c.statut == "annulee" and c.par ~= c.client then return nil end
-	if enCours and c.par ~= c.assigne then return nil end
+	if c.statut == "prise" then
+		-- « prise » par le crafteur, ou rendue à « prise » par le client qui conteste la livraison.
+		if c.par ~= c.assigne and c.par ~= c.client then return nil end
+	elseif c.statut == "terminee" then
+		if c.par ~= c.assigne and c.par ~= c.client then return nil end
+	elseif enCours and c.par ~= c.assigne then
+		return nil
+	end
 	if c.crafteur and c.assigne and c.assigne ~= c.crafteur then return nil end
 	c.hash = Commandes.hash(c)
 	return c
@@ -154,8 +170,16 @@ local function suivant(o, action, par, extra)
 		return "prise"
 	elseif action == "mats" then
 		if s == "prise" and par == o.assigne then return "mats" end
-	elseif action == "terminer" then
-		if (s == "prise" or s == "mats") and par == o.assigne then return "terminee" end
+	elseif action == "livrer" then
+		-- Le crafteur a remis l'objet. Son propre client n'a rien à confirmer : la commande est terminée d'emblée.
+		if (s == "prise" or s == "mats") and par == o.assigne then
+			return par == o.client and "terminee" or "livree"
+		end
+	elseif action == "confirmer" then
+		if s == "livree" and par == o.client then return "terminee" end
+	elseif action == "contester" then
+		-- Le client n'a pas reçu l'objet : la commande revient au crafteur.
+		if s == "livree" and par == o.client then return "prise" end
 	elseif action == "liberer" then
 		if (s == "prise" or s == "mats") and par == o.assigne then return "ouverte" end
 	elseif action == "annuler" then
@@ -175,7 +199,7 @@ function Commandes.appliquer(o, action, par, maintenant, extra)
 	c.rev = o.rev + 1
 	c.maj = math.max(maintenant, o.maj) -- jamais en arrière, même si les horloges diffèrent
 	c.par = par
-	if statut == "prise" then c.assigne = par end
+	if action == "prendre" then c.assigne = par end -- (« contester » rend aussi « prise », mais garde le crafteur)
 	if statut == "ouverte" then
 		c.assigne = nil
 		c.progres = nil -- libérée : la progression ne suit pas la commande
@@ -199,26 +223,26 @@ function Commandes.transitionLegale(avant, apres)
 	local par = apres.par
 
 	-- Progression seule : même état, même crafteur, mêmes termes de la commande, nombre fabriqué en hausse.
-	if apres.statut == avant.statut and (avant.statut == "prise" or avant.statut == "mats") then
+	if apres.statut == avant.statut and (avant.statut == "prise" or avant.statut == "mats") then -- (jamais une fois livrée)
 		return par == avant.assigne and apres.assigne == avant.assigne
 			and apres.qte == avant.qte and apres.mats == avant.mats and apres.crafteur == avant.crafteur
 			and (apres.note or "") == (avant.note or "")
 			and Commandes.crafte(apres) >= Commandes.crafte(avant) and Commandes.crafte(apres) <= apres.qte
 	end
+	-- L'action se déduit de l'état de départ et d'arrivée ; la table des droits (`suivant`) dit ensuite si `par` y avait droit.
 	local action
-	if apres.statut == "prise" then action = "prendre"
+	if apres.statut == "prise" then action = avant.statut == "livree" and "contester" or "prendre"
 	elseif apres.statut == "mats" then action = "mats"
-	elseif apres.statut == "terminee" then action = "terminer"
+	elseif apres.statut == "livree" then action = "livrer"
+	elseif apres.statut == "terminee" then action = avant.statut == "livree" and "confirmer" or "livrer"
 	elseif apres.statut == "annulee" then action = "annuler"
 	elseif apres.statut == "ouverte" then action = "liberer"
 	end
 	local attendu = action and suivant(avant, action, par)
 	if attendu ~= apres.statut then return false end
-	if apres.statut == "prise" and apres.assigne ~= par then return false end
-	if (apres.statut == "mats" or apres.statut == "terminee" or apres.statut == "annulee")
-		and apres.assigne ~= avant.assigne then
-		return false
-	end
+	if action == "prendre" then return apres.assigne == par end
+	-- Sauf pour prendre et libérer, le crafteur assigné ne change pas.
+	if action ~= "liberer" and apres.assigne ~= avant.assigne then return false end
 	return true
 end
 
