@@ -290,6 +290,6 @@ ns.Textes.frFR = {
 	VERSION_COMBAT = "Pas de message en combat : réessaie après le combat.",
 	VERSION_OBSOLETE_MEMBRE = "Version obsolète — mise à jour requise",
 	VERSION_OBSOLETE_AIDE = "Doit mettre Compagnons à jour (CurseForge) pour se synchroniser.",
-	VERSION_ETAT = "Avertissement de version — envoi automatique : %s ; silencieux (sans fenêtre ni son) : %s.",
-	AIDE_AVERTIR = "/cpg avertir [auto|silence on|off|envoyer] : avertissement des membres dont la version de Compagnons est trop ancienne",
+	VERSION_ETAT = "Avertissement de version — silencieux (sans fenêtre ni son) : %s.",
+	AIDE_AVERTIR = "/cpg avertir [silence on|off|envoyer] : avertissement des membres dont la version de Compagnons est trop ancienne",
 }

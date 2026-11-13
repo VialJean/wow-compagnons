@@ -12,7 +12,7 @@
 **Guild**
 - **Crafter suggestion:** the order dialog suggests who to ask: online first, then the least busy, then the highest profession level. One click picks them.
 - **Login reminders (once a day per character):** orders to confirm, orders with no taker, orders you took that have not moved, delivered orders the client has not confirmed. An order left open for 30 days is offered for cancellation. `/cpg reminders [on|off|now]`.
-- **Outdated versions are impossible to miss:** when a guildmate is still on an older version, a window, a warning text and sound, a red banner over the workshop window, a red "!" on the minimap button and the Members tab all say so. The first time, the addon whispers that person to update; the "Warn them" button repeats it (once a day at most). A newer version than yours is flagged the same way, so the next protocol change will not be silent. `/cpg warn [auto|silent on|off|send]`.
+- **Outdated versions are impossible to miss:** when a guildmate is still on an older version, a window, a warning text and sound, a red banner over the workshop window, a red "!" on the minimap button and the Members tab all say so. The addon never whispers anyone on its own: the "Warn them" button (window or Members tab) whispers each outdated member to update, once a day at most. A newer version than yours is flagged the same way, so the next protocol change will not be silent. `/cpg warn [silent on|off|send]`.
 - **Members tab:** shows each member's addon version.
 
 **Known limits**
@@ -32,7 +32,7 @@
 **Guilde**
 - **Suggestion de crafteur :** le dialogue de commande propose à qui la confier : en ligne d'abord, puis le moins chargé, puis le niveau de métier le plus élevé. Un clic pour le choisir.
 - **Rappels à la connexion (une fois par jour et par personnage) :** commandes à confirmer, sans preneur, prises sans avancée, livrées que le client n'a pas confirmées. Une commande restée ouverte 30 jours est proposée à l'annulation. `/cpg rappels [on|off|now]`.
-- **Une version trop ancienne ne passe plus inaperçue :** quand un membre de la guilde est resté sur une version plus ancienne, une fenêtre, un texte d'avertissement avec son, un bandeau rouge au-dessus de l'atelier, un « ! » rouge sur la minicarte et l'onglet Membres le disent. La première fois, l'addon écrit un chuchotement à cette personne pour qu'elle mette à jour ; le bouton « Les prévenir » le répète (une fois par jour au plus). Une version plus récente que la tienne est signalée de la même façon : le prochain changement de protocole ne sera plus silencieux. `/cpg avertir [auto|silence on|off|envoyer]`.
+- **Une version trop ancienne ne passe plus inaperçue :** quand un membre de la guilde est resté sur une version plus ancienne, une fenêtre, un texte d'avertissement avec son, un bandeau rouge au-dessus de l'atelier, un « ! » rouge sur la minicarte et l'onglet Membres le disent. L'addon n'envoie jamais de chuchotement tout seul : le bouton « Les prévenir » (fenêtre ou onglet Membres) écrit à chaque membre en retard pour qu'il mette à jour, une fois par jour au plus. Une version plus récente que la tienne est signalée de la même façon : le prochain changement de protocole ne sera plus silencieux. `/cpg avertir [silence on|off|envoyer]`.
 - **Onglet Membres :** affiche la version de l'addon de chaque membre.
 
 **Limites connues**

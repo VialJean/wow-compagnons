@@ -79,7 +79,6 @@ function Reseau:OnEnable()
 	self:RegisterComm(ns.PREFIXE, "SurMessage")
 	self:RegisterMessage("COMPAGNONS_METIER_SCANNE", "SurScan")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE", "SurRoster")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED", "PrevenirAuto") -- un chuchotement refusé en combat repart après
 
 	-- Nos personnages entrent dans la copie locale, sans rien diffuser tant que rien n'a changé.
 	self:PublierPersonnages(false)
@@ -137,7 +136,6 @@ function Reseau:SurVersion(cle, v, brut, a)
 		ns.log("warn", "sync", "version de protocole %s : %s (%s)", tostring(v), cle, evenement)
 		Compagnons:SendMessage("COMPAGNONS_VERSION_MAJ", evenement, cle)
 	end
-	if evenement == "nouveau" then self:PrevenirAuto() end
 end
 
 local function envoyerChuchotement(texte, cible)
@@ -145,7 +143,7 @@ local function envoyerChuchotement(texte, cible)
 	return pcall(envoyer, texte, "WHISPER", nil, cible)
 end
 
---- Écrit, par un chuchotement ordinaire (lisible sans l'addon), aux pairs de la liste. Renvoie le nombre de messages envoyés.
+--- Écrit, sur demande du joueur (jamais automatiquement), par un chuchotement ordinaire (lisible sans l'addon), aux pairs de la liste. Renvoie le nombre de messages envoyés.
 -- Un envoi par seconde : le serveur limite les messages envoyés d'affilée.
 function Reseau:Prevenir(liste)
 	local etat, n = ns.db.global.versions, 0
@@ -158,13 +156,6 @@ function Reseau:Prevenir(liste)
 		n = n + 1
 	end
 	return n
-end
-
---- Premier chuchotement, automatique, aux pairs qu'on n'a jamais prévenus (option `avertir.auto`). Jamais en combat.
-function Reseau:PrevenirAuto()
-	if not ns.db.profile.avertir.auto or InCombatLockdown() then return end
-	local liste = ns.Versions.aPrevenir(ns.db.global.versions, time(), ns.Synchro.PROTOCOLE, true)
-	if #liste > 0 then self:Prevenir(liste) end
 end
 
 --- Bouton « Les prévenir » : tous ceux qu'on n'a pas prévenus depuis un jour. Un clic du joueur.

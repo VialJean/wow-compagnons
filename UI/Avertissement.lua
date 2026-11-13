@@ -208,11 +208,8 @@ function Avertissement:Commande(arg, arg2)
 	if action == "send" or action == "envoyer" then
 		if ns.Reseau then ns.Reseau:PrevenirTous() end
 		return
-	elseif action == "auto" and (valeur == "on" or valeur == "off") then
-		reglage.auto = valeur == "on"
 	elseif (action == "silent" or action == "silence") and (valeur == "on" or valeur == "off") then
 		reglage.silencieux = valeur == "on"
 	end
-	Compagnons:Print(string.format(L.VERSION_ETAT,
-		reglage.auto and L.INFO_ACTIVE or L.INFO_DESACTIVE, reglage.silencieux and L.INFO_ACTIVE or L.INFO_DESACTIVE))
+	Compagnons:Print(string.format(L.VERSION_ETAT, reglage.silencieux and L.INFO_ACTIVE or L.INFO_DESACTIVE))
 end

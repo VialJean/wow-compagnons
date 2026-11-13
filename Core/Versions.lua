@@ -87,7 +87,7 @@ function Versions.plusRecente(etat, protocole)
 	return nil
 end
 
---- Pairs à qui écrire. `premiereFois` : seulement ceux qu'on n'a jamais prévenus (envoi automatique) ; sinon ceux qu'on n'a pas
+--- Pairs à qui écrire. `premiereFois` : seulement ceux qu'on n'a jamais prévenus ; sinon ceux qu'on n'a pas
 -- prévenus depuis un jour (le bouton « Les prévenir »). Au plus un chuchotement par personne et par jour.
 function Versions.aPrevenir(etat, maintenant, protocole, premiereFois)
 	local liste = {}
