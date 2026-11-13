@@ -9,7 +9,7 @@ ns.Alias = Alias
 
 local ACTIONS = {
 	recipes = "recettes", minimap = "minicarte", log = "journal", char = "perso",
-	tooltips = "infobulles", help = "aide", announce = "annonce", shopping = "courses", price = "prix", warn = "avertir",
+	tooltips = "infobulles", help = "aide", announce = "annonce", shopping = "courses", price = "prix", warn = "avertir", reminders = "rappels",
 }
 local OPTIONS = {
 	item = "objet", reagent = "composant", nobody = "personne",

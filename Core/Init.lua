@@ -31,6 +31,9 @@ local defauts = {
 		minimap = { hide = false },
 		observer = false,
 		stock = { suivi = true },
+		-- rappels à la connexion, une fois par jour ; délais en jours (Core/Rappels.lua) ; expiration : proposer d'annuler les
+		-- commandes ouvertes depuis `ancienne` jours
+		rappels = { actif = true, expiration = true, aConfirmer = 1, sansPreneur = 3, sansProgres = 5, enAttente = 3, ancienne = 30 },
 		avertir = { auto = true, silencieux = false }, -- premier chuchotement automatique ; silencieux : ni fenêtre ni son
 		livraison = { suivi = true, confirmer = true, aide = true }, -- suivi des fabrications et des échanges ; confirmer : demande avant d'avancer une commande
 		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
@@ -128,6 +131,8 @@ function Compagnons:Commande(saisie)
 		self:GetModule("Reseau"):Etat(ns.Alias.action(arg))
 	elseif action == "minicarte" then
 		self:GetModule("Minicarte"):Basculer()
+	elseif action == "rappels" then
+		self:GetModule("Rappels"):Commande(arg)
 	elseif action == "avertir" then
 		self:GetModule("Avertissement"):Commande(arg, arg2)
 	elseif action == "debug" then
@@ -146,6 +151,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_SYNC)
 		print("  " .. L.AIDE_AVERTIR)
+		print("  " .. L.AIDE_RAPPELS)
 		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_OBSERVER)
 		print("  " .. L.AIDE_COURSES)

@@ -263,6 +263,19 @@ ns.Textes.enUS = {
 	OUVRIR_ATELIER = "Open the guild workshop",
 
 	-- Version warning (peers still on protocol 2, or newer than ours)
+	-- Login reminders
+	RAPPEL_TITRE = "Order reminders",
+	RAPPEL_A_CONFIRMER = "%d delivered, to confirm (oldest: %d d)",
+	RAPPEL_SANS_PRENEUR = "%d with no taker (oldest: %d d)",
+	RAPPEL_SANS_PROGRES = "%d taken with no progress (oldest: %d d)",
+	RAPPEL_EN_ATTENTE = "%d delivered, not yet confirmed by the client (oldest: %d d)",
+	RAPPEL_ANCIENNES = "%d of your orders have been open for more than %d days with no taker. Cancel them?",
+	RAPPEL_ANNULER = "Cancel them",
+	RAPPEL_GARDER = "Keep them",
+	RAPPEL_ANNULEES = "%d order(s) cancelled.",
+	RAPPEL_RIEN = "No reminders: your orders are moving.",
+	RAPPEL_ETAT = "Login reminders: %s.",
+	AIDE_RAPPELS = "/cpg reminders [on|off|now]: reminders for orders that are not moving (once a day at login)",
 	VERSION_OBSOLETES = "Compagnons: %d guild member(s) can no longer sync with you, their addon version is too old: %s",
 	VERSION_PLUS_RECENTE = "A newer version of Compagnons exists. Update the addon (CurseForge) to sync with the guild.",
 	VERSION_PREVENIR = "Warn them",

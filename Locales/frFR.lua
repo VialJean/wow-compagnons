@@ -262,6 +262,19 @@ ns.Textes.frFR = {
 	OUVRIR_ATELIER = "Ouvrir l'atelier de guilde",
 
 	-- Avertissement de version (pairs restés en protocole 2, ou plus récent que le nôtre)
+	-- Rappels à la connexion
+	RAPPEL_TITRE = "Rappels de commandes",
+	RAPPEL_A_CONFIRMER = "%d livrée(s) à confirmer (la plus ancienne : %d j)",
+	RAPPEL_SANS_PRENEUR = "%d sans preneur (la plus ancienne : %d j)",
+	RAPPEL_SANS_PROGRES = "%d prise(s) sans avancée (la plus ancienne : %d j)",
+	RAPPEL_EN_ATTENTE = "%d livrée(s) que le client n'a pas confirmée(s) (la plus ancienne : %d j)",
+	RAPPEL_ANCIENNES = "%d de tes commandes sont ouvertes depuis plus de %d jours sans preneur. Les annuler ?",
+	RAPPEL_ANNULER = "Les annuler",
+	RAPPEL_GARDER = "Les garder",
+	RAPPEL_ANNULEES = "%d commande(s) annulée(s).",
+	RAPPEL_RIEN = "Aucun rappel : tes commandes avancent.",
+	RAPPEL_ETAT = "Rappels à la connexion : %s.",
+	AIDE_RAPPELS = "/cpg rappels [on|off|now] : rappels des commandes qui n'avancent pas (une fois par jour à la connexion)",
 	VERSION_OBSOLETES = "Compagnons : %d membre(s) ne se synchronisent plus avec toi, leur version de l'addon est trop ancienne : %s",
 	VERSION_PLUS_RECENTE = "Une version plus récente de Compagnons existe. Mets l'addon à jour (CurseForge) pour te synchroniser avec la guilde.",
 	VERSION_PREVENIR = "Les prévenir",

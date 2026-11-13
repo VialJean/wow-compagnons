@@ -69,6 +69,15 @@ local function ecrireDansLeChat(message)
 	Compagnons:Print(message.titre .. (message.detail ~= "" and (" : " .. message.detail) or ""))
 end
 
+--- Ajoute une alerte qui ne vient pas d'une commande reçue (les rappels de connexion) : dans le chat tout de suite, dans le
+-- cadre dès qu'on n'est plus en combat.
+function Alertes:Poster(titre, detail, voir)
+	local message = { titre = titre, detail = detail or "", voir = voir, vue = voir }
+	self.messages[#self.messages + 1] = message
+	ecrireDansLeChat(message)
+	if not InCombatLockdown() then self:Suivante() end
+end
+
 --- Transforme la file en messages (un par genre), puis les affiche si l'on n'est pas en combat.
 function Alertes:Vider()
 	if #self.file > 0 then

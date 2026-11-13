@@ -36,6 +36,7 @@ Core\Infobulles.lua
 Core\Synchro.lua
 Core\Versions.lua
 Core\Suggestion.lua
+Core\Rappels.lua
 Debug\Log.lua
 
 Data\Recettes.lua
@@ -53,6 +54,7 @@ Modules\Echanges.lua
 Modules\Courriers.lua
 Modules\Stocks.lua
 Modules\Marche.lua
+Modules\Rappels.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
