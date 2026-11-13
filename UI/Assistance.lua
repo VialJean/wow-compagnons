@@ -175,8 +175,9 @@ end
 --- Détermine le partenaire, ce qui reste à poser et le prochain emplacement. Met à jour le cadre.
 function Assistance:Actualiser(tolerant)
 	local f = self.cadre
-	if not f or not self.contexte or not f:IsShown() then
-		ns.log("info", "ui", "assistance : actualisation ignorée (cadre %s, contexte %s)", f and (f:IsShown() and "affiché" or "caché") or "absent", tostring(self.contexte))
+	if not f or not self.contexte then return end -- aucune fenêtre d'échange ou de courrier ouverte : rien à faire
+	if not f:IsShown() then
+		ns.log("info", "ui", "assistance : actualisation ignorée (cadre caché, contexte %s)", tostring(self.contexte))
 		return
 	end
 	if self.ancre and self.ancre.IsShown and not self.ancre:IsShown() then
