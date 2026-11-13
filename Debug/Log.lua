@@ -44,3 +44,20 @@ function Journal.afficher(nombre)
 		Journal.imprimer(Journal.lignes[(Journal.debut + i - 2) % CAPACITE + 1])
 	end
 end
+
+--- Copie les dernières lignes (hors synchro) dans les variables sauvegardées : lisibles dans le fichier
+-- WTF/…/SavedVariables/Compagnons.lua après /reload ou déconnexion, pour joindre le journal à un rapport.
+function Journal.sauver(nombre)
+	if not ns.db then return end
+	local sortie = {}
+	local depart = math.max(1, Journal.n - (nombre or 150) + 1)
+	for i = depart, Journal.n do
+		local l = Journal.lignes[(Journal.debut + i - 2) % CAPACITE + 1]
+		if l and l.cat ~= "sync" then sortie[#sortie + 1] = string.format("%s [%s] %s %s", l.t, l.niveau, l.cat, l.texte) end
+	end
+	ns.db.global.dernierJournal = sortie
+end
+
+local sauvegarde = CreateFrame("Frame")
+sauvegarde:RegisterEvent("PLAYER_LOGOUT")
+sauvegarde:SetScript("OnEvent", function() pcall(Journal.sauver) end)
