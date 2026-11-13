@@ -149,7 +149,9 @@ function Assistance:Afficher(contexte, ancre)
 	self.cadre:ClearAllPoints()
 	self.cadre:SetPoint("TOPLEFT", ancre, "TOPRIGHT", 4, 0)
 	self.cadre:Show()
-	self:Actualiser()
+	self:Actualiser(true)
+	-- La fenêtre du jeu peut n'être affichée qu'un instant après son événement : on recalcule juste après.
+	C_Timer.After(0.3, function() self:Actualiser() end)
 end
 
 function Assistance:SurEchange()
@@ -170,10 +172,17 @@ end
 -- ---------------------------------------------------------------------------------------------
 
 --- Détermine le partenaire, ce qui reste à poser et le prochain emplacement. Met à jour le cadre.
-function Assistance:Actualiser()
+function Assistance:Actualiser(tolerant)
 	local f = self.cadre
-	if not f or not self.contexte or not f:IsShown() then return end
-	if self.ancre and self.ancre.IsShown and not self.ancre:IsShown() then return self:Fermer() end
+	if not f or not self.contexte or not f:IsShown() then
+		ns.log("info", "ui", "assistance : actualisation ignorée (cadre %s, contexte %s)", f and (f:IsShown() and "affiché" or "caché") or "absent", tostring(self.contexte))
+		return
+	end
+	if self.ancre and self.ancre.IsShown and not self.ancre:IsShown() then
+		ns.log("info", "ui", "assistance : la fenêtre d'ancrage n'est pas (encore) affichée%s", tolerant == true and "" or ", fermeture")
+		if tolerant == true then return end -- à l'ouverture : la fenêtre du jeu peut s'afficher un instant plus tard
+		return self:Fermer()
+	end
 	securise("actualisation de l'assistance", function()
 		local moi = ns.clePersonnage()
 		local commandes = ns.db.global.commandes
