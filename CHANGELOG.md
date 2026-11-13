@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.5.0
+
+**Update required for the whole guild.** The sync protocol changes (version 3): guildmates still on 0.4.x no longer sync with you, and you no longer sync with them until they update.
+
+**Delivery**
+- **Delivered, awaiting confirmation:** when the crafter hands over the item, the order is now "delivered" and waits for the client to confirm receipt ("Received") or to say it did not arrive ("Not received": the order goes back to the crafter). If the client is their own crafter, the order is completed right away. A delivered order nobody confirms is forgotten after 7 days.
+- **One-click confirmation:** when the crafted item arrives by trade or mail from the crafter, the addon offers to confirm receipt (you validate). Items received before the crafter declares the delivery are remembered.
+- **Alerts:** the client is told when an order is delivered; the crafter is told when the client confirms or disputes. The minimap button also counts the orders waiting for your confirmation.
+
+**Guild**
+- **Crafter suggestion:** the order dialog suggests who to ask: online first, then the least busy, then the highest profession level. One click picks them.
+- **Login reminders (once a day per character):** orders to confirm, orders with no taker, orders you took that have not moved, delivered orders the client has not confirmed. An order left open for 30 days is offered for cancellation. `/cpg reminders [on|off|now]`.
+- **Outdated versions are impossible to miss:** when a guildmate is still on an older version, a window, a warning text and sound, a red banner over the workshop window, a red "!" on the minimap button and the Members tab all say so. The first time, the addon whispers that person to update; the "Warn them" button repeats it (once a day at most). A newer version than yours is flagged the same way, so the next protocol change will not be silent. `/cpg warn [auto|silent on|off|send]`.
+- **Members tab:** shows each member's addon version.
+
+**Known limits**
+- The whisper to an outdated member, the version warning display and the reception detection by trade and mail have not been validated in game yet. Please report problems with `/cpg log`.
+
+---
+
+## 0.5.0 (français)
+
+**Mise à jour obligatoire pour toute la guilde.** Le protocole de synchro change (version 3) : les membres restés en 0.4.x ne se synchronisent plus avec toi, et toi avec eux, tant qu'ils n'ont pas mis à jour.
+
+**Livraison**
+- **Livrée, en attente de confirmation :** quand le crafteur remet l'objet, la commande est « livrée » et attend que le client confirme la réception (« Bien reçu ») ou dise qu'il ne l'a pas reçue (« Pas reçu » : la commande revient au crafteur). Si le client est son propre crafteur, la commande est terminée d'emblée. Une commande livrée que personne ne confirme est oubliée au bout de 7 jours.
+- **Confirmation en un clic :** quand l'objet fabriqué arrive par échange ou par courrier de ton crafteur, l'addon propose de confirmer la réception (tu valides). Ce qui est reçu avant que le crafteur déclare la livraison est retenu.
+- **Alertes :** le client est prévenu quand une commande est livrée ; le crafteur, quand le client confirme ou conteste. Le bouton de minicarte compte aussi les commandes qui attendent ta confirmation.
+
+**Guilde**
+- **Suggestion de crafteur :** le dialogue de commande propose à qui la confier : en ligne d'abord, puis le moins chargé, puis le niveau de métier le plus élevé. Un clic pour le choisir.
+- **Rappels à la connexion (une fois par jour et par personnage) :** commandes à confirmer, sans preneur, prises sans avancée, livrées que le client n'a pas confirmées. Une commande restée ouverte 30 jours est proposée à l'annulation. `/cpg rappels [on|off|now]`.
+- **Une version trop ancienne ne passe plus inaperçue :** quand un membre de la guilde est resté sur une version plus ancienne, une fenêtre, un texte d'avertissement avec son, un bandeau rouge au-dessus de l'atelier, un « ! » rouge sur la minicarte et l'onglet Membres le disent. La première fois, l'addon écrit un chuchotement à cette personne pour qu'elle mette à jour ; le bouton « Les prévenir » le répète (une fois par jour au plus). Une version plus récente que la tienne est signalée de la même façon : le prochain changement de protocole ne sera plus silencieux. `/cpg avertir [auto|silence on|off|envoyer]`.
+- **Onglet Membres :** affiche la version de l'addon de chaque membre.
+
+**Limites connues**
+- Le chuchotement aux membres en retard, l'affichage de l'avertissement de version et la détection de réception par échange et par courrier n'ont pas encore été validés en jeu. Signale les problèmes avec `/cpg journal`.
+
+---
+
 ## 0.4.0
 
 **Delivery**

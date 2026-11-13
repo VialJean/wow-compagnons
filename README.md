@@ -24,12 +24,13 @@ Requirements: a full (not trial) account, and a guild. Trial accounts cannot sen
 
 ## État
 
-Version 0.3 (bêta) : navigateur de recettes, commandes de craft (création, tableau, prise, libération,
+Version 0.5 (bêta) : navigateur de recettes, commandes de craft (création, tableau, prise, libération,
 annulation), panneau dans la fenêtre de métier, alertes, bouton de minicarte, synchronisation des profils
 et des commandes de guilde, infobulles, liste de courses avec stock de tous les personnages et coût estimé (prix
 relevés à l'hôtel des ventes et partagés avec la guilde), suivi des fabrications, détection des livraisons par échange et
-par courrier, assistant de remise (un clic par objet ; l'échange et le courrier restent validés par le joueur).
-À venir : le Relais et le bot Discord. Détail dans [CHANGELOG.md](CHANGELOG.md) et `docs/livraison.md`.
+par courrier, assistant de remise (un clic par objet ; l'échange et le courrier restent validés par le joueur), réception
+confirmée par le client (une commande est « livrée » puis « terminée »), suggestion de crafteur, rappels à la connexion et
+avertissement quand un membre de la guilde a une version trop ancienne de l'addon. Détail dans [CHANGELOG.md](CHANGELOG.md) et `docs/livraison.md`.
 
 ## Langues
 
