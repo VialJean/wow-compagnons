@@ -36,7 +36,7 @@ describe("Livraison.rapprocher", function()
 		assert.are.equal("a", p[1].id)
 	end)
 
-	it("propose « terminer » quand l'objet fabriqué est remis en quantité suffisante", function()
+	it("propose « livrer » quand l'objet fabriqué est remis en quantité suffisante", function()
 		local cmds = lister({ commande("a", { statut = "mats" }) })
 		assert.are.equal("livrer", Livraison.rapprocher(cmds, donnees, "Jean Vialjean", "Spellus", {}, { [500] = 3 })[1].action)
 		assert.are.equal(0, #Livraison.rapprocher(cmds, donnees, "Jean Vialjean", "Spellus", {}, { [500] = 2 }))
@@ -146,5 +146,88 @@ describe("Livraison.rapprocher : remises en plusieurs fois", function()
 		assert.is_nil(cumul.a)
 		assert.is_nil(cumul.b)
 		assert.is_not_nil(cumul.c)
+	end)
+end)
+
+describe("Livraison.reception : confirmer la réception (je suis le client)", function()
+	local moi, crafteur = "Spellus Spamus", "Jean"
+
+	it("propose « confirmer » quand l'objet fabriqué arrive et que la commande est livrée", function()
+		local cmds = lister({ commande("a", { statut = "livree" }) })
+		local p, cumul = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 3 })
+		assert.are.equal(1, #p)
+		assert.are.equal("confirmer", p[1].action)
+		assert.is_nil(cumul.a)
+	end)
+
+	it("ne propose rien en dessous de la quantité, mais retient ce qui est arrivé", function()
+		local cmds = lister({ commande("a", { statut = "livree" }) })
+		local p, cumul = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 2 })
+		assert.are.equal(0, #p)
+		assert.are.equal(2, cumul.a.recu[500])
+	end)
+
+	it("additionne les remises en plusieurs échanges", function()
+		local cmds = lister({ commande("a", { statut = "livree" }) })
+		local _, cumul = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 2 })
+		local p, cumul2 = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 1 }, cumul)
+		assert.are.equal("confirmer", p[1].action)
+		assert.is_nil(cumul2.a)
+	end)
+
+	it("retient la réception tant que le crafteur n'a pas déclaré la livraison, puis propose dès qu'elle l'est", function()
+		local cmds = lister({ commande("a", { statut = "mats" }) })
+		local p, cumul = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 3 })
+		assert.are.equal(0, #p) -- pas encore livrée : on ne peut pas confirmer
+		assert.are.equal(3, cumul.a.recu[500])
+		cmds.a.statut = "livree" -- la mise à jour du crafteur arrive
+		local p2, cumul2 = Livraison.reception(cmds, donnees, moi, nil, {}, cumul)
+		assert.are.equal(1, #p2)
+		assert.are.equal("confirmer", p2[1].action)
+		assert.is_nil(cumul2.a)
+	end)
+
+	it("ne retient pas plus que la quantité commandée", function()
+		local cmds = lister({ commande("a", { statut = "mats" }) })
+		local _, cumul = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 40 })
+		assert.are.equal(3, cumul.a.recu[500])
+	end)
+
+	it("ignore un autre expéditeur, une commande qui n'est pas la mienne, ouverte ou terminée, et un enchantement", function()
+		local cmds = lister({
+			commande("a", { statut = "livree" }),
+			commande("b", { statut = "livree", client = "Autre Personne" }),
+			commande("c", { statut = "ouverte", assigne = nil }),
+			commande("d", { statut = "terminee" }),
+			commande("e", { statut = "livree", spell = 2 }),
+		})
+		assert.are.equal(0, #Livraison.reception(cmds, donnees, moi, "Alice", { [500] = 99 }))
+		local p = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 99 })
+		assert.are.equal(1, #p)
+		assert.are.equal("a", p[1].id)
+	end)
+
+	it("répartit les objets sur les commandes de la plus ancienne à la plus récente", function()
+		local cmds = lister({
+			commande("a", { statut = "livree", cree = 1 }),
+			commande("b", { statut = "livree", cree = 2 }),
+		})
+		local p = Livraison.reception(cmds, donnees, moi, crafteur, { [500] = 3 })
+		assert.are.equal(1, #p)
+		assert.are.equal("a", p[1].id)
+	end)
+
+	it("le cumul survit à la purge côté client, mais pas à une contestation ni à une annulation", function()
+		local cumul = { a = { recu = { [500] = 1 }, donne = {} }, b = { recu = { [500] = 1 }, donne = {} },
+			c = { recu = { [500] = 1 }, donne = {} } }
+		local cmds = lister({
+			commande("a", { statut = "livree" }),
+			commande("b", { statut = "annulee" }),
+			commande("c", { statut = "terminee" }),
+		})
+		Livraison.purger(cumul, cmds, moi)
+		assert.is_not_nil(cumul.a)
+		assert.is_nil(cumul.b)
+		assert.is_nil(cumul.c)
 	end)
 end)

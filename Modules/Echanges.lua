@@ -37,6 +37,7 @@ function Echanges:OnEnable()
 	self:RegisterEvent("TRADE_SHOW", "SurOuverture")
 	self:RegisterEvent("TRADE_ACCEPT_UPDATE", "SurAcceptation")
 	self:RegisterEvent("UI_INFO_MESSAGE", "SurMessage")
+	self:RegisterMessage("COMPAGNONS_COMMANDE_RECUE", "SurCommande")
 
 	StaticPopupDialogs["COMPAGNONS_LIVRAISON"] = {
 		text = "%s",
@@ -85,6 +86,10 @@ function Echanges:Traiter(partenaire, recu, donne)
 	local cumul = ns.db.global.livraisonCumul
 	ns.Livraison.purger(cumul, ns.db.global.commandes, moi)
 	local propositions, nouveau = ns.Livraison.rapprocher(ns.db.global.commandes, ns.Recettes, moi, partenaire, recu, donne, cumul)
+	-- Côté client : l'objet reçu de mon crafteur. Le cumul passe de l'un à l'autre (les commandes ne sont jamais les mêmes).
+	local receptions, apres = ns.Livraison.reception(ns.db.global.commandes, ns.Recettes, moi, partenaire, recu, nouveau)
+	nouveau = apres
+	for _, p in ipairs(receptions) do propositions[#propositions + 1] = p end
 	-- Remplace le contenu en place : la table appartient à la base de données.
 	for id in pairs(cumul) do cumul[id] = nil end
 	for id, fiche in pairs(nouveau) do cumul[id] = fiche end
@@ -98,21 +103,41 @@ function Echanges:Traiter(partenaire, recu, donne)
 	end
 end
 
+--- Une commande vient de changer depuis le réseau. Si elle devient « livrée » alors que j'ai déjà reçu l'objet (le crafteur
+-- déclare souvent la livraison après l'échange), je propose de confirmer la réception.
+function Echanges:SurCommande(_, _, avant, apres)
+	if not self:Actif() or not apres or apres.statut ~= "livree" or (avant and avant.statut == "livree") then return end
+	local moi = ns.clePersonnage()
+	if apres.client ~= moi then return end
+	local cumul = ns.db.global.livraisonCumul
+	local propositions, nouveau = ns.Livraison.reception(ns.db.global.commandes, ns.Recettes, moi, nil, {}, cumul)
+	for id in pairs(cumul) do cumul[id] = nil end
+	for id, fiche in pairs(nouveau) do cumul[id] = fiche end
+	for _, p in ipairs(propositions) do
+		if ns.db.profile.livraison.confirmer then self:Demander(p) else self:Appliquer(p) end
+	end
+end
+
 function Echanges:Demander(p)
 	local o = ns.db.global.commandes[p.id]
 	local recette = o and ns.Recettes.recettes[o.spell]
 	if not o or not recette then return end
-	local modele = p.action == "mats" and L.LIVRAISON_MATS or L.LIVRAISON_LIVRER
-	StaticPopup_Show("COMPAGNONS_LIVRAISON", string.format(modele, o.client, o.qte, recette.nom or "?"), nil, p)
+	local modele = ({ mats = L.LIVRAISON_MATS, livrer = L.LIVRAISON_LIVRER, confirmer = L.LIVRAISON_CONFIRMER })[p.action]
+	if not modele then return end
+	-- Le nom affiché est celui de l'autre : le client pour le crafteur, le crafteur pour le client.
+	local autre = p.action == "confirmer" and o.assigne or o.client
+	StaticPopup_Show("COMPAGNONS_LIVRAISON", string.format(modele, autre or "?", o.qte, recette.nom or "?"), nil, p)
 end
 
 function Echanges:Appliquer(p)
 	local moteur = ns.Reseau and ns.Reseau.moteur
 	local o = ns.db.global.commandes[p.id]
 	if not moteur or not o or not o.assigne then return end
-	if moteur:AgirCommande(p.id, p.action, o.assigne) then
+	-- Le client confirme la réception ; le crafteur assigné fait avancer jusqu'à la livraison.
+	local par = p.action == "confirmer" and o.client or o.assigne
+	if moteur:AgirCommande(p.id, p.action, par) then
 		local recette = ns.Recettes.recettes[o.spell]
-		local modele = p.action == "mats" and L.LIVRAISON_FAIT_MATS or L.LIVRAISON_FAIT_LIVRER
+		local modele = ({ mats = L.LIVRAISON_FAIT_MATS, livrer = L.LIVRAISON_FAIT_LIVRER, confirmer = L.LIVRAISON_FAIT_CONFIRMER })[p.action]
 		Compagnons:Print(string.format(modele, recette and recette.nom or "?"))
 		Compagnons:SendMessage("COMPAGNONS_COMMANDES_MAJ")
 	end

@@ -1,7 +1,9 @@
 -- Rapprochement entre un échange (ou un courrier) et mes commandes. Lua pur, sans API du jeu.
--- Côté crafteur uniquement : seul le crafteur assigné fait avancer une commande (voir Commandes).
+-- `rapprocher` : côté crafteur, qui fait avancer la commande jusqu'à la livraison (voir Commandes).
+-- `reception` : côté client, qui confirme la réception de l'objet fabriqué.
 --   matériaux reçus du client      -> proposition « mats »     (commande prise)
 --   objet fabriqué donné au client -> proposition « livrer » (commande prise ou matériaux reçus)
+--   objet fabriqué reçu du crafteur -> proposition « confirmer » (commande livrée)
 -- Le rapprochement ne décide rien : il propose, le joueur confirme (ou l'option d'automatisme applique).
 local _, ns = ...
 
@@ -120,11 +122,61 @@ function Livraison.rapprocher(commandes, donnees, moi, partenaire, recu, donne, 
 	return propositions, nouveau
 end
 
---- Retire du cumul les commandes qui n'existent plus ou que je ne dois plus livrer (annulée, terminée, libérée).
+--- Réception côté client : l'objet fabriqué que mon crafteur m'a remis (échange ou courrier), additionné d'une remise à l'autre.
+-- Propose « confirmer » quand la commande est **livrée** et que le total reçu suffit. Le crafteur déclare souvent la
+-- livraison après l'échange : ce qui est reçu avant est donc retenu dans le cumul, et la proposition part dès que la commande
+-- devient livrée (appel avec `recu` vide et `partenaire` nil). Même forme de cumul que `rapprocher`.
+-- Renvoie 1) { { id, action = "confirmer" }, ... } 2) le nouveau cumul.
+function Livraison.reception(commandes, donnees, moi, partenaire, recu, cumul)
+	local restant = copie(recu)
+	local candidates = {}
+	for _, o in pairs(commandes) do
+		local recette = donnees.recettes[o.spell]
+		if o.client == moi and o.assigne and recette and recette.objet
+			and (o.statut == "prise" or o.statut == "mats" or o.statut == "livree")
+			and (partenaire == nil or Livraison.memePersonne(o.assigne, partenaire)) then
+			candidates[#candidates + 1] = o
+		end
+	end
+	table.sort(candidates, function(a, b)
+		if a.cree ~= b.cree then return a.cree < b.cree end
+		return a.id < b.id
+	end)
+
+	local nouveau = {}
+	for id, c in pairs(cumul or {}) do nouveau[id] = { recu = copie(c.recu), donne = copie(c.donne) } end
+
+	local propositions = {}
+	for _, o in ipairs(candidates) do
+		local recette = donnees.recettes[o.spell]
+		local fiche = nouveau[o.id] or { recu = {}, donne = {} }
+		local besoin = o.qte * (recette.qte or 1)
+		local deja = fiche.recu[recette.objet] or 0
+		local dispo = restant[recette.objet] or 0
+		local pris = math.min(dispo, math.max(0, besoin - deja)) -- jamais plus que ce qui manque
+		ajoute(fiche.recu, recette.objet, pris)
+		restant[recette.objet] = dispo - pris
+
+		if o.statut == "livree" and deja + pris >= besoin then
+			propositions[#propositions + 1] = { id = o.id, action = "confirmer" }
+			nouveau[o.id] = nil
+		elseif vide(fiche.recu) and vide(fiche.donne) then
+			nouveau[o.id] = nil
+		else
+			nouveau[o.id] = fiche
+		end
+	end
+	return propositions, nouveau
+end
+
+--- Retire du cumul les commandes qui n'existent plus ou que je n'ai plus à suivre : annulée, terminée, libérée, ou reprise
+-- par un autre (côté crafteur) ; terminée, annulée ou contestée (côté client : un cumul ne survit pas à une contestation).
 function Livraison.purger(cumul, commandes, moi)
 	for id in pairs(cumul) do
 		local o = commandes[id]
-		if not o or o.assigne ~= moi or (o.statut ~= "prise" and o.statut ~= "mats") then cumul[id] = nil end
+		local crafteur = o and o.assigne == moi and (o.statut == "prise" or o.statut == "mats")
+		local client = o and o.client == moi and o.assigne and (o.statut == "prise" or o.statut == "mats" or o.statut == "livree")
+		if not (crafteur or client) then cumul[id] = nil end
 	end
 end
 
