@@ -226,6 +226,8 @@ ns.Textes.frFR = {
 	ALERTE_PLUSIEURS = "%d nouvelles commandes pour toi",
 	ALERTE_LIVREE = "Commande livrée : confirme la réception",
 	ALERTE_TERMINEE = "Commande terminée",
+	ALERTE_CONFIRMEE = "Réception confirmée par le client",
+	ALERTE_CONTESTEE = "Le client dit ne pas avoir reçu l'objet",
 	ALERTE_PRISE = "Commande prise",
 	ALERTE_LIBEREE = "Commande libérée",
 	ALERTE_DETAIL = "%d × %s · %s",
@@ -240,6 +242,7 @@ ns.Textes.frFR = {
 	-- Minicarte
 	MINICARTE_PERSOS = "%d personnage(s) scanné(s)",
 	MINICARTE_A_REMPLIR = "%d commande(s) que tu peux remplir",
+	MINICARTE_A_CONFIRMER = "%d commande(s) à confirmer (livrées)",
 	MINICARTE_EN_COURS = "%d de tes commandes en cours",
 	MINICARTE_AIDE = "Clic : ouvrir · Clic droit : masquer",
 	MINICARTE_MASQUEE = "Bouton de minicarte masqué. /cpg minicarte pour le réafficher.",

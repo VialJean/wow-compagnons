@@ -44,6 +44,8 @@ function Minicarte:OnEnable()
 				end
 			end
 			if miennes > 0 then tooltip:AddLine(string.format(L.MINICARTE_EN_COURS, miennes), 0.5, 0.7, 1) end
+			local aConfirmer = ns.Atelier and ns.Atelier:CompterAConfirmer() or 0
+			if aConfirmer > 0 then tooltip:AddLine(string.format(L.MINICARTE_A_CONFIRMER, aConfirmer), 0.91, 0.66, 0.31) end
 			local alerte = ns.Avertissement and ns.Avertissement:Resume()
 			if alerte then tooltip:AddLine(alerte, 1, 0.25, 0.25, true) end
 			tooltip:AddLine(L.MINICARTE_AIDE, 0.66, 0.61, 0.53)
@@ -85,7 +87,7 @@ function Minicarte:ActualiserPastille()
 		self.alerte = a
 	end
 	self.alerte:SetShown((ns.Avertissement and ns.Avertissement:Resume()) ~= nil)
-	local n = ns.Atelier:CompterPourMoi()
+	local n = ns.Atelier:CompterPourMoi() + ns.Atelier:CompterAConfirmer() -- à remplir, plus à confirmer
 	self.pastille:SetText(n > 0 and tostring(n) or "")
 end
 

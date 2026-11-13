@@ -56,6 +56,16 @@ function Atelier:CompterPourMoi()
 	return #self:Vue("pourmoi")
 end
 
+--- Nombre de mes commandes livrées dont j'attends de confirmer la réception (je suis le client).
+function Atelier:CompterAConfirmer()
+	local miens = self:Miens()
+	local n = 0
+	for _, o in pairs(self:Commandes()) do
+		if o.statut == "livree" and miens[o.client] then n = n + 1 end
+	end
+	return n
+end
+
 --- Commandes d'un métier que l'on peut remplir, plus celles que l'on a prises : panneau de la fenêtre de métier.
 function Atelier:PourMetier(idMetier)
 	local miens = self:Miens()
@@ -163,8 +173,8 @@ function Atelier:Agir(o, action)
 		if self:Connait(o.spell) ~= par then
 			return nil, string.format(L.CONNECTE_TOI, self:Connait(o.spell) or "?")
 		end
-	elseif action == "annuler" then
-		par = o.client
+	elseif action == "annuler" or action == "confirmer" or action == "contester" then
+		par = o.client -- le client annule, confirme la réception ou la conteste
 	else
 		par = o.assigne
 	end

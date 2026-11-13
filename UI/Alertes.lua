@@ -41,6 +41,11 @@ function Alertes:SurCommande(_, _, avant, apres)
 		elseif apres.statut == "prise" then genre = "prise"
 		elseif apres.statut == "ouverte" then genre = "liberee"
 		end
+	elseif apres.assigne and miens[apres.assigne] and avant.statut == "livree" then
+		-- Je suis le crafteur : le client confirme la réception, ou dit qu'il n'a rien reçu.
+		if apres.statut == "terminee" then genre = "confirmee"
+		elseif apres.statut == "prise" then genre = "contestee"
+		end
 	end
 	if not genre then return end
 
@@ -67,16 +72,17 @@ end
 --- Transforme la file en messages (un par genre), puis les affiche si l'on n'est pas en combat.
 function Alertes:Vider()
 	if #self.file > 0 then
-		local groupes = { nouvelle = {}, livree = {}, terminee = {}, prise = {}, liberee = {} }
+		local groupes = { nouvelle = {}, livree = {}, terminee = {}, prise = {}, liberee = {}, confirmee = {}, contestee = {} }
 		for _, a in ipairs(self.file) do table.insert(groupes[a.genre], a.commande) end
 		self.file = {}
 
-		local function ajouter(titre, liste, voir)
+		-- `avecClient` : l'alerte concerne le client (je suis le crafteur), sinon c'est le crafteur qui est nommé.
+		local function ajouter(titre, liste, voir, avecClient)
 			if #liste == 0 then return end
 			local o = liste[1]
 			local message = {
 				titre = titre,
-				detail = string.format(L.ALERTE_DETAIL, o.qte, nomRecette(o), o.assigne or o.client),
+				detail = string.format(L.ALERTE_DETAIL, o.qte, nomRecette(o), avecClient and o.client or (o.assigne or o.client)),
 				voir = voir,
 				vue = voir,
 			}
@@ -96,6 +102,8 @@ function Alertes:Vider()
 		ajouter(L.ALERTE_TERMINEE, groupes.terminee, "mes")
 		ajouter(L.ALERTE_PRISE, groupes.prise, "mes")
 		ajouter(L.ALERTE_LIBEREE, groupes.liberee, "mes")
+		ajouter(L.ALERTE_CONFIRMEE, groupes.confirmee, "mes", true)
+		ajouter(L.ALERTE_CONTESTEE, groupes.contestee, "mes", true)
 	end
 	if InCombatLockdown() then return end -- reprendra à PLAYER_REGEN_ENABLED
 	self:Suivante()

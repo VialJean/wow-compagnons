@@ -227,6 +227,8 @@ ns.Textes.enUS = {
 	ALERTE_PLUSIEURS = "%d new orders for you",
 	ALERTE_LIVREE = "Order delivered: confirm receipt",
 	ALERTE_TERMINEE = "Order completed",
+	ALERTE_CONFIRMEE = "Receipt confirmed by the client",
+	ALERTE_CONTESTEE = "The client says the item was not received",
 	ALERTE_PRISE = "Order taken",
 	ALERTE_LIBEREE = "Order released",
 	ALERTE_DETAIL = "%d × %s · %s",
@@ -241,6 +243,7 @@ ns.Textes.enUS = {
 	-- Minimap
 	MINICARTE_PERSOS = "%d character(s) scanned",
 	MINICARTE_A_REMPLIR = "%d order(s) you can fill",
+	MINICARTE_A_CONFIRMER = "%d order(s) to confirm (delivered)",
 	MINICARTE_EN_COURS = "%d of your orders in progress",
 	MINICARTE_AIDE = "Click: open · Right-click: hide",
 	MINICARTE_MASQUEE = "Minimap button hidden. Use /cpg minimap to show it again.",

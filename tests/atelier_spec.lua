@@ -144,6 +144,62 @@ describe("Atelier", function()
 		assert.is_not_nil(a)
 	end)
 
+	describe("réception d'une commande livrée (je suis le client)", function()
+		local function livree(extra)
+			local c = commandeDe("Jean Vialjean", 2329, extra)
+			ns.db.global.commandes[c.id] = ns.Commandes.appliquer(
+				ns.Commandes.appliquer(c, "prendre", "Wilgar Rolpik", 1001), "livrer", "Wilgar Rolpik", 1002)
+			return ns.db.global.commandes[c.id]
+		end
+
+		it("propose « Bien reçu » et « Pas reçu » au client, mais seulement une fois livrée", function()
+			local c = commandeDe("Jean Vialjean", 2329)
+			for _, a in ipairs(atelier:ActionsPossibles(c)) do assert.are_not.equal("confirmer", a.action) end
+			local l = livree()
+			assert.are.equal("livree", l.statut)
+			local actions = {}
+			for _, a in ipairs(atelier:ActionsPossibles(l)) do actions[a.action] = a end
+			assert.is_true(actions.confirmer.principale)
+			assert.is_not_nil(actions.contester)
+			assert.is_not_nil(actions.annuler)
+		end)
+
+		it("le client confirme : la commande est terminée", function()
+			local l = livree()
+			local fini = assert(atelier:Agir(l, "confirmer"))
+			assert.are.equal("terminee", fini.statut)
+			assert.are.equal("Jean Vialjean", fini.par)
+			assert.are.equal("Wilgar Rolpik", fini.assigne)
+		end)
+
+		it("le client conteste : la commande revient au même crafteur", function()
+			local rendue = assert(atelier:Agir(livree(), "contester"))
+			assert.are.equal("prise", rendue.statut)
+			assert.are.equal("Wilgar Rolpik", rendue.assigne)
+		end)
+
+		it("compte mes commandes à confirmer, pas celles des autres", function()
+			assert.are.equal(0, atelier:CompterAConfirmer())
+			livree()
+			assert.are.equal(1, atelier:CompterAConfirmer())
+			local autre = commandeDe("Elias Legentillet", 2329)
+			ns.db.global.commandes[autre.id] = ns.Commandes.appliquer(
+				ns.Commandes.appliquer(autre, "prendre", "Wilgar Rolpik", 1001), "livrer", "Wilgar Rolpik", 1002)
+			assert.are.equal(1, atelier:CompterAConfirmer())
+		end)
+
+		it("le crafteur n'a pas de bouton pour confirmer à la place du client", function()
+			local c = commandeDe("Wilgar Rolpik", 2329)
+			local prise = assert(atelier:Agir(c, "prendre"))
+			local l = assert(atelier:Agir(prise, "livrer"))
+			assert.are.equal("livree", l.statut)
+			for _, a in ipairs(atelier:ActionsPossibles(l)) do
+				assert.are_not.equal("confirmer", a.action)
+				assert.are_not.equal("contester", a.action)
+			end
+		end)
+	end)
+
 	it("formate l'âge d'une commande", function()
 		local maintenant = os.time()
 		assert.are.equal("AGE_INSTANT", atelier.Age(maintenant))
