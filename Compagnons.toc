@@ -35,6 +35,7 @@ Core\Desenchanter.lua
 Core\Infobulles.lua
 Core\Synchro.lua
 Core\Versions.lua
+Core\Suggestion.lua
 Debug\Log.lua
 
 Data\Recettes.lua

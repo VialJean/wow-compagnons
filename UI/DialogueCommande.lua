@@ -156,6 +156,30 @@ function Dialogue:Creer()
 		end)
 	end
 
+	-- Suggestion : le crafteur à qui confier la commande (en ligne, peu chargé, bon niveau), choisi d'un clic.
+	f.suggestion = CreateFrame("Button", nil, f)
+	f.suggestion:SetSize(260, 16)
+	f.suggestion:SetPoint("TOPLEFT", f.menuCrafteur, "BOTTOMLEFT", 2, -3)
+	f.suggestion.texte = f.suggestion:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	f.suggestion.texte:SetPoint("LEFT")
+	f.suggestion.texte:SetPoint("RIGHT")
+	f.suggestion.texte:SetJustifyH("LEFT")
+	f.suggestion:SetScript("OnClick", function(bouton)
+		if bouton.cle then
+			self.crafteur = bouton.cle
+			self:Actualiser()
+		end
+	end)
+	f.suggestion:SetScript("OnEnter", function(bouton)
+		if GameTooltip then
+			GameTooltip:SetOwner(bouton, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L.SUGGESTION_AIDE, 1, 1, 1)
+			GameTooltip:Show()
+		end
+	end)
+	f.suggestion:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+	f.suggestion:Hide()
+
 	-- Qui fournit les composants
 	local etiquetteMats = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	etiquetteMats:SetPoint("TOPLEFT", f.moins, "BOTTOMLEFT", 0, -18)
@@ -270,6 +294,7 @@ function Dialogue:Actualiser()
 
 	f.champQte:SetText(tostring(self.qte))
 	if f.menuCrafteur.GenerateMenu then f.menuCrafteur:GenerateMenu() end
+	securise("suggestion de crafteur", self.ActualiserSuggestion, self)
 	for cle, radio in pairs(f.radios) do radio:SetChecked(cle == self.mats) end
 	self:ActualiserComposants()
 
@@ -277,6 +302,22 @@ function Dialogue:Actualiser()
 end
 
 --- Composants nécessaires pour la quantité demandée, avec ce que l'on possède.
+function Dialogue:ActualiserSuggestion()
+	local bouton = self.cadre.suggestion
+	local meilleur = self.spellID and ns.Suggestion.meilleur(ns.catalogue:Crafteurs(self.spellID), ns.estEnLigne,
+		ns.Suggestion.charges(ns.db.global.commandes), ns.Atelier:Miens())
+	-- Rien à suggérer si personne n'est disponible, ou si le joueur a déjà choisi ce crafteur.
+	if not meilleur or meilleur.cle == self.crafteur then
+		bouton.cle = nil
+		bouton:Hide()
+		return
+	end
+	bouton.cle = meilleur.cle
+	bouton.texte:SetText(string.format(L.SUGGESTION, meilleur.nom, meilleur.enLigne and L.EN_LIGNE or L.HORS_LIGNE,
+		meilleur.niveau, meilleur.enCours))
+	bouton:Show()
+end
+
 function Dialogue:ActualiserComposants()
 	local f = self.cadre
 	local composants = self.spellID and ns.catalogue:Composants(self.spellID) or {}
