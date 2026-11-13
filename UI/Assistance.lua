@@ -133,6 +133,7 @@ function Assistance:Creer()
 end
 
 function Assistance:Afficher(contexte, ancre)
+	ns.log("info", "ui", "assistance : %s ouvert (option %s)", contexte, self:Actif() and "active" or "coupée")
 	if not self:Actif() then return end
 	if not self.cadre then
 		if not securise("création de l'assistance", self.Creer, self) then return end
@@ -187,6 +188,17 @@ function Assistance:Actualiser()
 
 		local requis, ids = {}, {}
 		if partenaire then requis, ids = ns.Assistance.requis(commandes, ns.Recettes, moi, partenaire) end
+		-- Journal : pourquoi l'assistance s'affiche ou non (« /cpg debug » puis « /cpg journal »).
+		local commeCrafteur, commeClient, sansRecette = 0, 0, 0
+		for _, o in pairs(commandes) do
+			if o.assigne == moi then commeCrafteur = commeCrafteur + 1 end
+			if o.client == moi then commeClient = commeClient + 1 end
+			if (o.assigne == moi or o.client == moi) and not (ns.Recettes.recettes[o.spell] and ns.Recettes.recettes[o.spell].objet) then
+				sansRecette = sansRecette + 1
+			end
+		end
+		ns.log("info", "ui", "assistance : moi=%s, partenaire=%s, %d commande(s) concernée(s) ; en base : %d crafteur, %d client, %d sans objet connu",
+			tostring(moi), tostring(partenaire), #ids, commeCrafteur, commeClient, sansRecette)
 		if #ids == 0 then
 			f:Hide()
 			self.plan = nil
