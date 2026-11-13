@@ -130,6 +130,7 @@ function Assistance:Creer()
 	f.bouton:SetSize(220, 24)
 	f.bouton:SetPoint("BOTTOM", 0, 8)
 	f.bouton:SetScript("OnClick", function() Assistance:Placer() end)
+	return true -- `securise` en fait un succès ; sans cela, la première ouverture après un rechargement n'affichait rien
 end
 
 function Assistance:Afficher(contexte, ancre)
