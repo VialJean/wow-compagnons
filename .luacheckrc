@@ -28,6 +28,7 @@ read_globals = {
 	"GetGuildRosterInfo", "GetNumGuildMembers", "C_GuildInfo", "GuildRoster",
 	"date", "time", "tinsert",
 	-- Interface
+	"RaidNotice_AddMessage", "RaidWarningFrame", "ChatTypeInfo", "PlaySound", "SOUNDKIT", "OKAY", "SendChatMessage",
 	"CreateFrame", "UIParent", "UISpecialFrames", "GameTooltip",
 	"CreateDataProvider", "CreateScrollBoxListLinearView", "ScrollUtil", "ScrollBoxConstants",
 	"ButtonFrameTemplate_HideButtonBar", "PanelTemplates_TabResize",
