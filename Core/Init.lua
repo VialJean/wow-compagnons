@@ -36,7 +36,7 @@ local defauts = {
 		rappels = { actif = true, expiration = true, aConfirmer = 1, sansPreneur = 3, sansProgres = 5, enAttente = 3, ancienne = 30 },
 		avertir = { silencieux = false, connexion = false }, -- silencieux : ni fenêtre ni son ; connexion : refaire l'avertissement quand un nouveau membre en retard se connecte (le chuchotement ne part jamais seul)
 		livraison = { suivi = true, confirmer = true, aide = true }, -- suivi des fabrications et des échanges ; confirmer : demande avant d'avancer une commande
-		infobulles = { objet = true, composant = true, personne = false, desenchantement = true,
+		infobulles = { objet = true, cout = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},
 }

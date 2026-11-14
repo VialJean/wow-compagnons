@@ -58,6 +58,8 @@ function Module:Contexte(lien)
 		enLigne = ns.estEnLigne,
 		maj = IsShiftKeyDown(),
 		options = ns.db.profile.infobulles,
+		coutRecette = function(spellID) return ns.Prix.coutRecette(ns.Recettes, ns.db.global.prix, spellID, 1, time()) end,
+		argent = ns.Marche and ns.Marche.Argent,
 		couleurClasse = couleurClasse,
 		couleurQualite = function(qualite)
 			local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[qualite or 1]
@@ -180,6 +182,8 @@ function Module:Commande(option, valeur)
 	option = ns.Alias.option(option) -- anglais ou français
 	if option == "objet" or option == "composant" or option == "personne" or option == "desenchantement" then
 		reglages[option] = not reglages[option]
+	elseif option == "cout" then
+		reglages.cout = reglages.cout == false -- activé par défaut (nil) : on le coupe, et inversement
 	elseif option == "enchanteur" then
 		reglages.aucunEnchanteur = not reglages.aucunEnchanteur
 	elseif option == "commander" then
@@ -187,5 +191,6 @@ function Module:Commande(option, valeur)
 		if valeur == "ctrlmaj" or valeur == "maj" or valeur == "aucune" then reglages.commander = valeur end
 	end
 	Compagnons:Print(string.format(L.INFO_ETAT, etat(reglages.objet), etat(reglages.composant),
-		etat(reglages.personne), etat(reglages.desenchantement), etat(reglages.aucunEnchanteur), reglages.commander))
+		etat(reglages.personne), etat(reglages.desenchantement), etat(reglages.aucunEnchanteur), reglages.commander,
+		etat(reglages.cout ~= false)))
 end

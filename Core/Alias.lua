@@ -13,7 +13,7 @@ local ACTIONS = {
 }
 local OPTIONS = {
 	item = "objet", reagent = "composant", nobody = "personne",
-	disenchant = "desenchantement", enchanter = "enchanteur", order = "commander",
+	disenchant = "desenchantement", enchanter = "enchanteur", order = "commander", cost = "cout",
 }
 local VALEURS = { ctrlshift = "ctrlmaj", shift = "maj", none = "aucune" }
 

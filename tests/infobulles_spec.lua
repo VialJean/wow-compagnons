@@ -477,3 +477,52 @@ describe("Infobulles : désenchantement", function()
 		assert.are.equal("Compagnons · désenchantement", t[vide + 1])
 	end)
 end)
+
+describe("Infobulles : coût de fabrication", function()
+	local personnages = { ["Jean Vialjean"] = perso("Jean Vialjean", "SHAMAN", 60, { 2329 }) }
+
+	--- Coût fourni par table : { [spellID] = { total, inconnus, anciens } }.
+	local function avecCout(couts, options)
+		local ctx = contexte(personnages, options)
+		ctx.coutRecette = function(spellID) return couts[spellID] end
+		ctx.argent = function(cuivre) return cuivre .. "c" end
+		return ctx
+	end
+
+	it("affiche le coût des composants quand tous les prix sont connus", function()
+		local ctx = avecCout({ [2329] = { total = 1250, inconnus = 0, anciens = 0 } })
+		assert.is_true(ligneEgale(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication : 1250c"))
+	end)
+
+	it("ramène le coût à un exemplaire quand la recette en fabrique plusieurs", function()
+		local ctx = avecCout({ [2329] = { total = 1000, inconnus = 0, anciens = 0 } })
+		ctx.catalogue.donnees.recettes[2329].qte = 2
+		assert.is_true(ligneEgale(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication : 500c"))
+		ctx.catalogue.donnees.recettes[2329].qte = 1
+	end)
+
+	it("signale un coût partiel quand des prix manquent", function()
+		local ctx = avecCout({ [2329] = { total = 300, inconnus = 1, anciens = 0 } })
+		assert.is_true(ligneEgale(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication : au moins 300c (1 prix inconnu(s))"))
+	end)
+
+	it("signale des prix anciens", function()
+		local ctx = avecCout({ [2329] = { total = 300, inconnus = 0, anciens = 2 } })
+		assert.is_true(contient(ns.Infobulles.objet(ctx, 2454), "prix anciens"))
+	end)
+
+	it("n'affiche rien sans aucun prix connu", function()
+		local ctx = avecCout({ [2329] = { total = 0, inconnus = 2, anciens = 0 } })
+		assert.is_false(contient(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication"))
+	end)
+
+	it("se coupe avec l'option « cout »", function()
+		local ctx = avecCout({ [2329] = { total = 1250, inconnus = 0, anciens = 0 } },
+			{ objet = true, composant = true, personne = false, commander = "ctrlmaj", cout = false })
+		assert.is_false(contient(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication"))
+	end)
+
+	it("reste absent quand le contexte ne fournit pas les prix", function()
+		assert.is_false(contient(ns.Infobulles.objet(contexte(personnages), 2454), "Coût de fabrication"))
+	end)
+end)

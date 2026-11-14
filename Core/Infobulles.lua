@@ -11,7 +11,9 @@
 --   stock(itemID),             quantité possédée (sacs et banque)
 --   enLigne(cle),              vrai si le personnage est connecté
 --   maj,                       vrai si Maj est enfoncé
---   options,                   { objet, composant, personne, commander }
+--   options,                   { objet, composant, personne, commander, cout }
+--   coutRecette(spellID),      { total, inconnus, anciens } : coût des composants d'une fabrication (facultatif)
+--   argent(cuivre),            texte d'un montant (facultatif)
 --   couleurClasse(classe),     r, g, b
 --   couleurQualite(qualite),   r, g, b
 -- }
@@ -86,6 +88,35 @@ local function nomsColores(ctx, crafteurs)
 	return texte
 end
 
+--- Ligne « coût de fabrication » : la recette la moins chère pour un exemplaire, d'après les prix relevés des composants.
+-- `ctx.coutRecette(spellID)` renvoie { total, inconnus, anciens } pour une fabrication ; `ctx.argent(cuivre)` met en forme.
+-- Une recette dont tous les prix sont connus passe avant une recette incomplète ; sans aucun prix connu, pas de ligne.
+local function ligneCout(ctx, recettes)
+	if not ctx.coutRecette or not ctx.argent or ctx.options.cout == false then return nil end
+	local meilleur
+	for _, spellID in ipairs(recettes) do
+		local recette = ctx.catalogue.donnees.recettes[spellID]
+		local c = recette and ctx.coutRecette(spellID)
+		if c and c.total > 0 then -- aucun prix connu : rien à afficher
+			local unitaire = c.total / math.max(1, recette.qte or 1)
+			if not meilleur or (c.inconnus < meilleur.inconnus)
+				or (c.inconnus == meilleur.inconnus and unitaire < meilleur.unitaire) then
+				meilleur = { unitaire = unitaire, inconnus = c.inconnus, anciens = c.anciens }
+			end
+		end
+	end
+	if not meilleur then return nil end
+	local montant = ctx.argent(math.floor(meilleur.unitaire + 0.5))
+	local texte
+	if meilleur.inconnus > 0 then
+		texte = string.format(ns.L.INFO_COUT_PARTIEL, montant, meilleur.inconnus)
+	else
+		texte = string.format(ns.L.INFO_COUT, montant)
+	end
+	if meilleur.anciens > 0 then texte = texte .. " · " .. ns.L.INFO_COUT_ANCIEN end
+	return ligne(texte, meilleur.inconnus > 0 and GRIS or BLANC)
+end
+
 --- Lignes à ajouter à l'infobulle d'un objet créé par une recette de la base, ou nil.
 function Infobulles.objet(ctx, itemID)
 	if not ctx or not ctx.options or not ctx.options.objet or not ctx.catalogue then return nil end
@@ -99,6 +130,9 @@ function Infobulles.objet(ctx, itemID)
 	elseif ctx.options.personne then
 		lignes[#lignes + 1] = ligne(ns.L.INFO_PERSONNE, ROUGE_DOUX)
 	end
+
+	local cout = ligneCout(ctx, recettes)
+	if cout then lignes[#lignes + 1] = cout end
 
 	-- Commandes pour cet objet : toutes celles qui ne sont pas finales, dont celles que l'on peut remplir.
 	local ensemble = {}
