@@ -91,7 +91,16 @@ function Marche:SurMarchand()
 	securise("marchand", function()
 		local nombre = _G.GetMerchantNumItems and _G.GetMerchantNumItems() or 0
 		for i = 1, nombre do
-			local _, _, prix, quantite, disponible, _, cout = _G.GetMerchantItemInfo(i)
+			local prix, quantite, disponible, cout
+			local api = _G.C_MerchantFrame
+			if api and api.GetItemInfo then
+				-- API récente : un tableau (numAvailable vaut -1 sans limite de stock)
+				local info = api.GetItemInfo(i)
+				if info then prix, quantite, disponible, cout = info.price, info.stackCount, info.numAvailable, info.hasExtendedCost end
+			elseif _G.GetMerchantItemInfo then
+				local _
+				_, _, prix, quantite, disponible, _, cout = _G.GetMerchantItemInfo(i)
+			end
 			local itemID = idDepuisLien(_G.GetMerchantItemLink and _G.GetMerchantItemLink(i))
 			if itemID and ns.Recettes.objets[itemID] and disponible == -1 and not cout
 				and type(prix) == "number" and prix > 0 and type(quantite) == "number" and quantite >= 1 then
