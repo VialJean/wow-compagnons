@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.1
+
+**Fixes**
+- **Handover assistant:** it now appears the first time you open the trade or mail window after a reload (it only appeared from the second time).
+- **Handover assistant, partial stacks:** the game ignored the split when attaching to mail, so a whole stack of 12 left instead of 6. The assistant now first splits the stack into a free bag slot (first click), then places that stack (second click). If no bag slot is free, it tells you.
+- **Version warning:** the window, text and sound no longer repeat each time an outdated guildmate logs in. They appear once at your login; `/cpg warn login on` brings the repeat back. The banner, the minimap "!" and the Members tab stay up to date.
+- **Bug reports:** the last lines of the log (`/cpg log`) are now saved when you reload or log out, to attach to a report.
+
+---
+
+## 0.5.1 (français)
+
+**Corrections**
+- **Assistant de remise :** il s'affiche dès la première ouverture de l'échange ou du courrier après un rechargement (il n'apparaissait qu'à partir de la deuxième).
+- **Assistant de remise, tas partiels :** le jeu ignorait le fractionnement vers le courrier, et un tas entier de 12 partait au lieu de 6. L'assistant sépare maintenant le tas dans une case libre des sacs (premier clic), puis pose ce tas (second clic). S'il n'y a aucune case libre, il le dit.
+- **Avertissement de version :** la fenêtre, le texte et le son ne reviennent plus à chaque connexion d'un membre en retard. Ils apparaissent une fois à votre connexion ; `/cpg avertir connexion on` rétablit la répétition. Le bandeau, le « ! » de la minicarte et l'onglet Membres restent à jour.
+- **Rapports de bug :** les dernières lignes du journal (`/cpg journal`) sont enregistrées au rechargement ou à la déconnexion, pour les joindre à un rapport.
+
+---
+
 ## 0.5.0
 
 **Update required for the whole guild.** The sync protocol changes (version 3): guildmates still on 0.4.x no longer sync with you, and you no longer sync with them until they update.
