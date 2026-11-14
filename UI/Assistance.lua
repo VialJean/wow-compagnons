@@ -53,6 +53,21 @@ local function lireSacs()
 	return sacs
 end
 
+--- Première case libre des sacs ordinaires (hors sac de composants), ou nil.
+local function caseLibre()
+	local C = _G.C_Container
+	for bag = 0, _G.NUM_BAG_SLOTS or 4 do
+		local n = (C and C.GetContainerNumSlots and C.GetContainerNumSlots(bag))
+			or (_G.GetContainerNumSlots and _G.GetContainerNumSlots(bag)) or 0
+		for slot = 1, n do
+			local pris
+			if C and C.GetContainerItemInfo then pris = C.GetContainerItemInfo(bag, slot) ~= nil
+			elseif _G.GetContainerItemInfo then pris = _G.GetContainerItemInfo(bag, slot) ~= nil end
+			if not pris then return bag, slot end
+		end
+	end
+end
+
 --- Ce qui est déjà posé dans la fenêtre d'échange : { [itemID] = quantité } et premier emplacement libre.
 local function lireEchange()
 	local places, libre = {}, nil
@@ -281,7 +296,20 @@ function Assistance:Placer()
 		local info = C2 and C2.GetContainerItemInfo and C2.GetContainerItemInfo(p.bag, p.slot)
 		ns.log("info", "ui", "assistance : pose de %d × #%d (sac %d, case %d, tas de %s, %s)", p.n, p.itemID, p.bag, p.slot,
 			info and tostring(info.stackCount) or "?", p.partiel and "fractionné" or "tas entier")
-		if p.partiel then fractionner(p.bag, p.slot, p.n) else prendre(p.bag, p.slot) end
+		if p.partiel then
+			-- Forever ignore le fractionnement quand on attache au courrier (tout le tas part) : on sépare d'abord le tas
+			-- dans une case libre des sacs ; le clic suivant pose ce tas entier.
+			local bagLibre, caseL = caseLibre()
+			if not bagLibre then
+				Compagnons:Print(L.ASSIST_PAS_DE_PLACE)
+				return
+			end
+			fractionner(p.bag, p.slot, p.n)
+			prendre(bagLibre, caseL)
+			ns.log("info", "ui", "assistance : tas séparé vers le sac %d, case %d", bagLibre, caseL)
+			return
+		end
+		prendre(p.bag, p.slot)
 		local curseur = _G.GetCursorInfo and { _G.GetCursorInfo() }
 		ns.log("info", "ui", "assistance : curseur après %s : %s", p.partiel and "fractionnement" or "prise",
 			curseur and curseur[1] and (tostring(curseur[1]) .. " " .. tostring(curseur[2])) or "vide")

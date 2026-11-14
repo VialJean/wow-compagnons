@@ -51,6 +51,7 @@ ns.Textes.frFR = {
 	LIVRAISON_LIVRER = "Tu as remis à %s les %d × %s. Marquer la commande comme livrée ?",
 	ASSIST_TITRE = "Compagnons : remise à %s (%d commande(s))",
 	ASSIST_PLACER = "Placer %d × %s",
+	ASSIST_PAS_DE_PLACE = "Aucune case libre dans les sacs pour séparer le tas : libérez-en une et cliquez de nouveau.",
 	ASSIST_RIEN = "Rien à placer",
 	ASSIST_ENCORE = "Un clic par objet. Tu valides toi-même.",
 	ASSIST_FINI = "Tout est en place : vérifie, puis valide.",

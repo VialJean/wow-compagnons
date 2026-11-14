@@ -52,6 +52,7 @@ ns.Textes.enUS = {
 	LIVRAISON_LIVRER = "You handed %s the %d × %s. Mark the order as delivered?",
 	ASSIST_TITRE = "Compagnons: handover to %s (%d order(s))",
 	ASSIST_PLACER = "Place %d × %s",
+	ASSIST_PAS_DE_PLACE = "No free bag slot to split the stack: free one up and click again.",
 	ASSIST_RIEN = "Nothing to place",
 	ASSIST_ENCORE = "One click per item. You validate yourself.",
 	ASSIST_FINI = "Everything is in place: check, then validate.",
