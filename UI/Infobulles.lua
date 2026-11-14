@@ -120,14 +120,13 @@ function Module:Ajouter(infobulle, data)
 	infobulle.cpgAjoute = itemID
 	infobulle:AddLine(" ")
 	for _, l in ipairs(lignes) do
-		-- Un montant s'affiche comme le prix de vente d'un sac : cadre monétaire avec pièces colorées et icônes.
-		local pose = false
-		if l.cuivre and _G.SetTooltipMoney then
-			local ok, erreur = pcall(_G.SetTooltipMoney, infobulle, l.cuivre, nil, l.prefixe .. " ", l.suffixe ~= "" and l.suffixe or nil)
-			pose = ok
-			if not ok then ns.log("erreur", "ui", "prix de fabrication : %s", tostring(erreur)) end
+		if l.cuivre then
+			-- Un montant : libellé à gauche, pièces avec icônes alignées à droite, comme un prix de sac. Le cadre monétaire du jeu
+			-- (SetTooltipMoney) est refusé aux addons (« secret number value, while execution tainted »), d'où le texte à icônes.
+			infobulle:AddDoubleLine(l.prefixe .. l.suffixe, ns.Marche.Argent(l.cuivre), l.r, l.g, l.b, 1, 1, 1)
+		else
+			infobulle:AddLine(l.texte, l.r, l.g, l.b)
 		end
-		if not pose then infobulle:AddLine(l.texte, l.r, l.g, l.b) end
 	end
 end
 
