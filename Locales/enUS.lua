@@ -292,6 +292,6 @@ ns.Textes.enUS = {
 	VERSION_COMBAT = "No messages during combat: try again after the fight.",
 	VERSION_OBSOLETE_MEMBRE = "Outdated version — update required",
 	VERSION_OBSOLETE_AIDE = "Needs to update Compagnons (CurseForge) to sync.",
-	VERSION_ETAT = "Version warning — silent (no pop-up or sound): %s.",
-	AIDE_AVERTIR = "/cpg warn [silent on|off|send]: warn members whose Compagnons version is too old",
+	VERSION_ETAT = "Version warning — repeat when an outdated member logs in: %s; silent (no pop-up or sound): %s.",
+	AIDE_AVERTIR = "/cpg warn [login on|off|silent on|off|send]: warn members whose Compagnons version is too old",
 }

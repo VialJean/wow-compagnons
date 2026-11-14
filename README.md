@@ -46,7 +46,7 @@ Les commandes existent en anglais et en français :
 | `/cpg minimap` | `minicarte` | masque ou réaffiche le bouton de la minicarte |
 | `/cpg sync [announce]` | `annonce` | état de la synchro de guilde, ou force une annonce |
 | `/cpg reminders [on\|off\|now]` | `rappels` | rappels à la connexion (une fois par jour) : commandes à confirmer, sans preneur, sans avancée ; propose d'annuler les commandes ouvertes depuis 30 jours |
-| `/cpg warn [silent on\|off\|send]` | `avertir` | avertissement des membres dont la version de Compagnons est trop ancienne : fenêtre et son, ou envoi du chuchotement (jamais automatique) |
+| `/cpg warn [login on\|off\|silent on\|off\|send]` | `avertir` | avertissement des membres dont la version de Compagnons est trop ancienne : fenêtre et son à la connexion (et, en option, à chaque connexion d'un membre en retard), ou envoi du chuchotement (jamais automatique) |
 | `/cpg tooltips [item\|reagent\|nobody\|disenchant\|enchanter\|order <ctrlshift\|shift\|none>]` | `infobulles` | réglages des infobulles |
 | `/cpg help` | `aide` | liste des commandes |
 | `/cpg diag` | | diagnostic du client (à lancer avec une fenêtre de métier ouverte) |

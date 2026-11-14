@@ -144,7 +144,10 @@ end
 function Avertissement:SurMaj(_, evenement)
 	self:ActualiserBandeau()
 	if ns.Fenetre and ns.Fenetre.RafraichirMembres then securise("onglet Membres", ns.Fenetre.RafraichirMembres, ns.Fenetre) end
-	if evenement == "nouveau" or evenement == "plusrecente" then
+	-- Un membre en retard qui se connecte ne relance fenêtre, texte et son que si l'option « connexion » est active ; le bandeau,
+	-- la minicarte et l'onglet Membres, eux, sont toujours à jour. Une version plus récente que la nôtre prévient toujours.
+	local relancer = evenement == "plusrecente" or (evenement == "nouveau" and ns.db.profile.avertir.connexion)
+	if relancer then
 		if self.prevu then return end
 		self.prevu = true
 		C_Timer.After(DELAI_REGROUPEMENT, function()
@@ -210,6 +213,9 @@ function Avertissement:Commande(arg, arg2)
 		return
 	elseif (action == "silent" or action == "silence") and (valeur == "on" or valeur == "off") then
 		reglage.silencieux = valeur == "on"
+	elseif (action == "login" or action == "connexion") and (valeur == "on" or valeur == "off") then
+		reglage.connexion = valeur == "on"
 	end
-	Compagnons:Print(string.format(L.VERSION_ETAT, reglage.silencieux and L.INFO_ACTIVE or L.INFO_DESACTIVE))
+	Compagnons:Print(string.format(L.VERSION_ETAT, reglage.connexion and L.INFO_ACTIVE or L.INFO_DESACTIVE,
+		reglage.silencieux and L.INFO_ACTIVE or L.INFO_DESACTIVE))
 end
