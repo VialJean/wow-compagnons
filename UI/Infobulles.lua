@@ -114,7 +114,16 @@ function Module:Ajouter(infobulle, data)
 	if not lignes then return end
 	infobulle.cpgAjoute = itemID
 	infobulle:AddLine(" ")
-	for _, l in ipairs(lignes) do infobulle:AddLine(l.texte, l.r, l.g, l.b) end
+	for _, l in ipairs(lignes) do
+		-- Un montant s'affiche comme le prix de vente d'un sac : cadre monétaire avec pièces colorées et icônes.
+		local pose = false
+		if l.cuivre and _G.SetTooltipMoney then
+			local ok, erreur = pcall(_G.SetTooltipMoney, infobulle, l.cuivre, nil, l.prefixe .. " ", l.suffixe ~= "" and l.suffixe or nil)
+			pose = ok
+			if not ok then ns.log("erreur", "ui", "prix de fabrication : %s", tostring(erreur)) end
+		end
+		if not pose then infobulle:AddLine(l.texte, l.r, l.g, l.b) end
+	end
 end
 
 --- Maj enfoncé ou relâché : l'infobulle d'un composant change (liste de crafteurs ou détail des recettes).

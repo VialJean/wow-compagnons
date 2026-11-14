@@ -506,6 +506,15 @@ describe("Infobulles : coût de fabrication", function()
 		assert.is_true(ligneEgale(ns.Infobulles.objet(ctx, 2454), "Coût de fabrication : au moins 300c (1 prix inconnu(s))"))
 	end)
 
+	it("fournit de quoi afficher le montant comme un prix du jeu (préfixe, cuivres, suffixe)", function()
+		local ctx = avecCout({ [2329] = { total = 300, inconnus = 1, anciens = 1 } })
+		local l
+		for _, x in ipairs(ns.Infobulles.objet(ctx, 2454)) do if x.cuivre then l = x end end
+		assert.are.equal(300, l.cuivre)
+		assert.are.equal("Coût de fabrication : au moins", l.prefixe)
+		assert.are.equal(" (1 prix inconnu(s)) · prix anciens", l.suffixe)
+	end)
+
 	it("signale des prix anciens", function()
 		local ctx = avecCout({ [2329] = { total = 300, inconnus = 0, anciens = 2 } })
 		assert.is_true(contient(ns.Infobulles.objet(ctx, 2454), "prix anciens"))

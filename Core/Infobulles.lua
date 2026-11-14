@@ -1,7 +1,7 @@
 -- Texte des infobulles d'objet (voir docs/infobulles.md). Lua pur, sans API du jeu :
 -- le contexte fournit les données et ce module renvoie une liste de lignes.
 --
---   ligne = { texte = "...", r = 1, g = 1, b = 1 }
+--   ligne = { texte = "...", r = 1, g = 1, b = 1 }   (+ prefixe, cuivre, suffixe pour un montant à afficher comme un prix du jeu)
 --
 -- contexte = {
 --   catalogue,                 ns.catalogue
@@ -106,15 +106,15 @@ local function ligneCout(ctx, recettes)
 		end
 	end
 	if not meilleur then return nil end
-	local montant = ctx.argent(math.floor(meilleur.unitaire + 0.5))
-	local texte
-	if meilleur.inconnus > 0 then
-		texte = string.format(ns.L.INFO_COUT_PARTIEL, montant, meilleur.inconnus)
-	else
-		texte = string.format(ns.L.INFO_COUT, montant)
-	end
-	if meilleur.anciens > 0 then texte = texte .. " · " .. ns.L.INFO_COUT_ANCIEN end
-	return ligne(texte, meilleur.inconnus > 0 and GRIS or BLANC)
+	local cuivre = math.max(1, math.floor(meilleur.unitaire + 0.5))
+	local prefixe = meilleur.inconnus > 0 and ns.L.INFO_COUT_AU_MOINS or ns.L.INFO_COUT
+	local suffixe = ""
+	if meilleur.inconnus > 0 then suffixe = " " .. string.format(ns.L.INFO_COUT_INCONNUS, meilleur.inconnus) end
+	if meilleur.anciens > 0 then suffixe = suffixe .. " · " .. ns.L.INFO_COUT_ANCIEN end
+	-- `texte` : la ligne complète (montant en texte) ; `prefixe`, `cuivre`, `suffixe` : de quoi l'afficher comme un prix du jeu.
+	local l = ligne(prefixe .. " " .. ctx.argent(cuivre) .. suffixe, meilleur.inconnus > 0 and GRIS or BLANC)
+	l.prefixe, l.cuivre, l.suffixe = prefixe, cuivre, suffixe
+	return l
 end
 
 --- Lignes à ajouter à l'infobulle d'un objet créé par une recette de la base, ou nil.
