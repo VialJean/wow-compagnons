@@ -515,6 +515,24 @@ describe("Infobulles : coût de fabrication", function()
 		assert.are.equal(" (1 prix inconnu(s)) · prix anciens", l.suffixe)
 	end)
 
+	it("affiche le prix d'achat relevé de l'objet, avec ses réserves", function()
+		local ctx = avecCout({})
+		ctx.prixAchat = function() return 4200, false, false end
+		local l = ns.Infobulles.objet(ctx, 2454)
+		assert.is_true(ligneEgale(l, "Prix d'achat : 4200c"))
+		ctx.prixAchat = function() return 4200, true, true end
+		assert.is_true(ligneEgale(ns.Infobulles.objet(ctx, 2454), "Prix d'achat : 4200c (vendeur) · prix ancien"))
+	end)
+
+	it("n'affiche pas de prix d'achat sans relevé, ou option coupée", function()
+		local ctx = avecCout({})
+		ctx.prixAchat = function() return nil end
+		assert.is_false(contient(ns.Infobulles.objet(ctx, 2454), "Prix d'achat"))
+		ctx = avecCout({}, { objet = true, composant = true, personne = false, commander = "ctrlmaj", cout = false })
+		ctx.prixAchat = function() return 4200, false, false end
+		assert.is_false(contient(ns.Infobulles.objet(ctx, 2454), "Prix d'achat"))
+	end)
+
 	it("signale des prix anciens", function()
 		local ctx = avecCout({ [2329] = { total = 300, inconnus = 0, anciens = 2 } })
 		assert.is_true(contient(ns.Infobulles.objet(ctx, 2454), "prix anciens"))

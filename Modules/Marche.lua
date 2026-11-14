@@ -5,7 +5,7 @@
 -- Chez un marchand : le prix des composants qu'il vend en quantité illimitée et contre de l'or seulement (un prix de vendeur
 -- l'emporte sur l'hôtel des ventes : c'est le coût réel, voir Core/Prix.lua). Le prix affiché tient compte de la réputation ;
 -- le prix de base, plus haut, l'emporte à la synchro.
--- Seul le prix d'un composant de la base est mémorisé : le plus bas prix à achat immédiat vu, par unité.
+-- Seul le prix d'un composant de la base (ou d'un objet qu'elle sait fabriquer, en local) est mémorisé : le plus bas prix à achat immédiat vu, par unité.
 -- Message émis : COMPAGNONS_PRIX_MAJ
 -- /cpg prix [<id ou lien> <montant>|clear]
 local _, ns = ...
@@ -40,9 +40,29 @@ local function idDepuisLien(lien)
 	return type(lien) == "string" and tonumber(lien:match("item:(%d+)")) or nil
 end
 
---- Enregistre un prix pour un composant de la base. Renvoie vrai s'il a changé.
+--- Un objet dont on retient le prix : un composant de la base, ou un objet que la base sait fabriquer.
+function Marche:Suivi(itemID)
+	if ns.Recettes.objets[itemID] then return true end
+	return ns.catalogue ~= nil and #ns.catalogue:RecettesCreant(itemID) > 0
+end
+
+--- Prix d'achat relevé d'un objet : prix unitaire, horodatage, vendeur (ou nil).
+function Marche:PrixAchat(itemID)
+	local p, t, pnj = ns.Prix.unitaire(ns.db.global.prix, itemID)
+	if p then return p, t, pnj end
+	return ns.Prix.unitaire(ns.db.global.prixObjets or {}, itemID)
+end
+
+--- Enregistre un prix. Un composant de la base entre dans les prix de la guilde (synchronisés) ; un objet fabricable reste
+-- local (`prixObjets`), pour comparer avec le coût de fabrication. Renvoie vrai s'il a changé.
 function Marche:Noter(itemID, unitaire, pnj)
-	if not ns.Recettes.objets[itemID] then return false end
+	if not ns.Recettes.objets[itemID] then
+		if not self:Suivi(itemID) then return false end
+		ns.db.global.prixObjets = ns.db.global.prixObjets or {}
+		local change = ns.Prix.enregistrer(ns.db.global.prixObjets, itemID, unitaire, time(), pnj)
+		if change then Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end
+		return change
+	end
 	local change = ns.Prix.enregistrer(ns.db.global.prix, itemID, unitaire, time(), pnj)
 	if change then
 		Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ")
@@ -58,7 +78,7 @@ function Marche:SurListe()
 		local parObjet = {}
 		for i = 1, nombre or 0 do
 			local itemID = idDepuisLien(GetAuctionItemLink("list", i))
-			if itemID and ns.Recettes.objets[itemID] then
+			if itemID and self:Suivi(itemID) then
 				local _, _, quantite, _, _, _, _, _, _, achat = GetAuctionItemInfo("list", i)
 				local lots = parObjet[itemID]
 				if not lots then
@@ -78,7 +98,7 @@ end
 --- API moderne : les marchandises sont triées par prix, le premier résultat est le moins cher.
 function Marche:SurMarchandise(_, itemID)
 	securise("marchandise", function()
-		if not itemID or not ns.Recettes.objets[itemID] then return end
+		if not itemID or not self:Suivi(itemID) then return end
 		local api = _G.C_AuctionHouse
 		if not api or not api.GetNumCommoditySearchResults or (api.GetNumCommoditySearchResults(itemID) or 0) < 1 then return end
 		local info = api.GetCommoditySearchResultInfo(itemID, 1)
@@ -102,7 +122,7 @@ function Marche:SurMarchand()
 				_, _, prix, quantite, disponible, _, cout = _G.GetMerchantItemInfo(i)
 			end
 			local itemID = idDepuisLien(_G.GetMerchantItemLink and _G.GetMerchantItemLink(i))
-			if itemID and ns.Recettes.objets[itemID] and disponible == -1 and not cout
+			if itemID and self:Suivi(itemID) and disponible == -1 and not cout
 				and type(prix) == "number" and prix > 0 and type(quantite) == "number" and quantite >= 1 then
 				self:Noter(itemID, prix / quantite, true)
 			end
@@ -135,6 +155,7 @@ function Marche:Commande(objet, montant)
 
 	if objet:lower() == "clear" then
 		for id in pairs(prix) do prix[id] = nil end
+		ns.db.global.prixObjets = {}
 		Compagnons:Print(L.PRIX_EFFACE)
 		Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ")
 		return

@@ -3,6 +3,7 @@
 ## 0.5.2
 
 - **Crafting cost in the item tooltip:** a craftable item now shows "Crafting cost: …" in its Compagnons block, from the reagent prices you have recorded (auction house and vendors). It is the cheapest recipe, per item. With missing prices it says "at least …"; with old prices it says so. `/cpg tooltips cost` turns it off.
+- **Buy price in the tooltip:** below the crafting cost, "Buy price: …" shows the lowest price seen for the item itself (auction house, or vendor), with a note when it is old. Prices of craftable items are now recorded too when you browse the auction house; they stay on your computer and are not shared with the guild. Reagent tooltips show their price as well.
 - **Fix:** vendor prices were not recorded (the game no longer has `GetMerchantItemInfo`; the addon now reads `C_MerchantFrame.GetItemInfo`).
 
 ---
@@ -10,6 +11,7 @@
 ## 0.5.2 (français)
 
 - **Coût de fabrication dans l'infobulle :** un objet craftable affiche « Coût de fabrication : … » dans son bloc Compagnons, d'après les prix des composants que vous avez relevés (hôtel des ventes et marchands). C'est la recette la moins chère, par objet. S'il manque des prix, la ligne dit « au moins … » ; si les prix sont anciens, elle le dit. `/cpg infobulles cout` la coupe.
+- **Prix d'achat dans l'infobulle :** sous le coût de fabrication, « Prix d'achat : … » donne le prix le plus bas relevé pour l'objet lui-même (hôtel des ventes ou vendeur), avec une mention quand il est ancien. Les prix des objets fabricables sont maintenant aussi relevés quand vous parcourez l'hôtel des ventes ; ils restent sur votre ordinateur et ne sont pas partagés avec la guilde. L'infobulle d'un composant affiche aussi son prix.
 - **Correction :** les prix des marchands n'étaient pas relevés (le jeu n'a plus `GetMerchantItemInfo` ; l'addon lit maintenant `C_MerchantFrame.GetItemInfo`).
 
 ---

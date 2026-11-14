@@ -14,6 +14,7 @@
 --   options,                   { objet, composant, personne, commander, cout }
 --   coutRecette(spellID),      { total, inconnus, anciens } : coût des composants d'une fabrication (facultatif)
 --   argent(cuivre),            texte d'un montant (facultatif)
+--   prixAchat(itemID),         cuivre, ancien, vendeur : prix d'achat relevé d'un objet (facultatif)
 --   couleurClasse(classe),     r, g, b
 --   couleurQualite(qualite),   r, g, b
 -- }
@@ -117,6 +118,20 @@ local function ligneCout(ctx, recettes)
 	return l
 end
 
+--- Ligne « prix d'achat » : le prix unitaire relevé (hôtel des ventes ou vendeur), s'il existe.
+-- `ctx.prixAchat(itemID)` renvoie cuivre, ancien (vrai si le relevé est ancien), vendeur (vrai si prix de PNJ).
+local function lignePrixAchat(ctx, itemID)
+	if not ctx.prixAchat or not ctx.argent or ctx.options.cout == false then return nil end
+	local cuivre, ancien, vendeur = ctx.prixAchat(itemID)
+	if type(cuivre) ~= "number" or cuivre < 1 then return nil end
+	local suffixe = ""
+	if vendeur then suffixe = " " .. ns.L.INFO_ACHAT_VENDEUR end
+	if ancien then suffixe = suffixe .. " · " .. ns.L.INFO_ACHAT_ANCIEN end
+	local l = ligne(ns.L.INFO_ACHAT .. " " .. ctx.argent(cuivre) .. suffixe, BLANC)
+	l.prefixe, l.cuivre, l.suffixe = ns.L.INFO_ACHAT, cuivre, suffixe
+	return l
+end
+
 --- Lignes à ajouter à l'infobulle d'un objet créé par une recette de la base, ou nil.
 function Infobulles.objet(ctx, itemID)
 	if not ctx or not ctx.options or not ctx.options.objet or not ctx.catalogue then return nil end
@@ -133,6 +148,8 @@ function Infobulles.objet(ctx, itemID)
 
 	local cout = ligneCout(ctx, recettes)
 	if cout then lignes[#lignes + 1] = cout end
+	local achat = lignePrixAchat(ctx, itemID)
+	if achat then lignes[#lignes + 1] = achat end
 
 	-- Commandes pour cet objet : toutes celles qui ne sont pas finales, dont celles que l'on peut remplir.
 	local ensemble = {}
@@ -324,6 +341,11 @@ function Infobulles.composant(ctx, itemID)
 	if #recettes == 0 then return nil end
 
 	local lignes = { ligne(ns.L.INFO_TITRE_COMPOSANT, OR) }
+	-- Un objet à la fois fabriqué et composant a déjà sa ligne de prix dans le bloc de l'objet.
+	if #ctx.catalogue:RecettesCreant(itemID) == 0 then
+		local achat = lignePrixAchat(ctx, itemID)
+		if achat then lignes[#lignes + 1] = achat end
+	end
 	for _, l in ipairs(lignesCommandes(ctx, itemID, recettes)) do lignes[#lignes + 1] = l end
 
 	if ctx.maj then

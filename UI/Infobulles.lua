@@ -60,6 +60,11 @@ function Module:Contexte(lien)
 		options = ns.db.profile.infobulles,
 		coutRecette = function(spellID) return ns.Prix.coutRecette(ns.Recettes, ns.db.global.prix, spellID, 1, time()) end,
 		argent = ns.Marche and ns.Marche.Argent,
+		prixAchat = function(itemID)
+			local p, t, pnj = ns.Marche:PrixAchat(itemID)
+			if not p then return nil end
+			return p, ns.Prix.ancien(t, time(), pnj), pnj == true
+		end,
 		couleurClasse = couleurClasse,
 		couleurQualite = function(qualite)
 			local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[qualite or 1]
