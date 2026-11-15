@@ -21,7 +21,7 @@ local donnees = {
 		[2329] = { metier = 171, indice = 1, niveau = 1, nom = "Élixir de Force mineure",
 			objet = 2454, qte = 1, qualite = 1, composants = { { 2449, 1 }, { 3371, 1 } } },
 		[2331] = { metier = 171, indice = 2, niveau = 1, nom = "Potion de mana mineure",
-			objet = 2455, qte = 1, qualite = 1, composants = { { 3371, 1 } } },
+			objet = 2455, qte = 1, qualite = 1, lie = true, composants = { { 3371, 1 } } },
 		[3000] = { metier = 171, indice = 3, niveau = 40, nom = "Huile de glace",
 			objet = 9999, qte = 1, qualite = 2, composants = { { 2449, 2 } } },
 		[7418] = { metier = 333, indice = 1, niveau = 1, nom = "Enchanter le bracelet",
@@ -104,16 +104,15 @@ describe("Catalogue", function()
 	end)
 
 	it("filtre les objets liés quand équipés", function()
-		local lies = { [2455] = true, [9999] = false } -- 2454 : pas encore connu (nil)
-		local function estLie(itemID) return lies[itemID] end
-		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, estLieEquipe = estLie }))
-		-- se combine aux autres filtres, et ne touche pas aux recettes sans objet (enchantements)
-		assert.are.same({}, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, inconnue = true }))
-		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, metier = 171 }))
-		assert.are.same({}, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, metier = 333 }))
-		-- sans fonction, ou sans le filtre : rien de changé
-		assert.are.same({}, c:Chercher({ lieEquipe = true }))
-		assert.are.same(c:Chercher({}), c:Chercher({ estLieEquipe = estLie }))
+		-- 2331 porte `lie = true` dans les données ; 7418 (enchantement) n'a pas d'objet
+		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true }))
+		-- se combine aux autres filtres
+		assert.are.same({}, c:Chercher({ lieEquipe = true, inconnue = true }))
+		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, metier = 171 }))
+		assert.are.same({}, c:Chercher({ lieEquipe = true, metier = 333 }))
+		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, craftable = true, texte = "mana" }))
+		-- sans le filtre : rien de changé
+		assert.are.same(c:Chercher({}), c:Chercher({ lieEquipe = false }))
 	end)
 
 	it("filtre les crafteurs en ligne", function()
