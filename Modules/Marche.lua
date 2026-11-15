@@ -139,10 +139,17 @@ function Marche:Pour(itemID)
 	return ns.Prix.unitaire(ns.db.global.prix, itemID)
 end
 
---- Montant en cuivre -> texte (avec les icônes de pièces du jeu quand elles existent).
+-- Icônes de pièces du jeu, insérées dans le texte. Construites ici plutôt que par GetCoinTextureString : sur ce client la
+-- fonction globale n'existe plus (le prix s'affichait en texte brut), et une séquence |T…|t ne dépend d'aucune API.
+local ICONES = {
+	or_ = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:0|t",
+	argent = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:0|t",
+	cuivre = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:2:0|t",
+}
+
+--- Montant en cuivre -> texte avec les icônes de pièces (or, argent, cuivre).
 function Marche.Argent(cuivre)
-	if GetCoinTextureString then return GetCoinTextureString(cuivre) end
-	return ns.Prix.texte(cuivre)
+	return ns.Prix.texte(cuivre, ICONES)
 end
 
 -- ---------------------------------------------------------------------------------------------
