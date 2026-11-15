@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.3
+
+- **Version warning, quieter:** the pop-up window, the central text and the sound no longer appear by default, not even once at login. The chat line, the red banner in the workshop window, the "!" on the minimap button and the Members tab still tell you. `/cpg warn silent off` brings the window and sound back.
+
+---
+
+## 0.5.3 (français)
+
+- **Avertissement de version, plus discret :** la fenêtre, le texte central et le son n'apparaissent plus par défaut, pas même une fois à la connexion. La ligne dans le chat, le bandeau rouge de la fenêtre de l'atelier, le « ! » du bouton de minicarte et l'onglet Membres continuent de vous prévenir. `/cpg avertir silence off` ramène la fenêtre et le son.
+
+---
+
 ## 0.5.2
 
 - **Crafting cost in the item tooltip:** a craftable item now shows "Crafting cost: …" in its Compagnons block, from the reagent prices you have recorded (auction house and vendors). It is the cheapest recipe, per item. With missing prices it says "at least …"; with old prices it says so. `/cpg tooltips cost` turns it off.
