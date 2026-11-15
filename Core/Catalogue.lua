@@ -148,6 +148,9 @@ end
 --   enLigne      vrai : au moins un personnage connecté la connaît (nécessite estEnLigne)
 --   inconnue     vrai : personne ne la connaît
 --   estEnLigne   fonction(cle) -> booléen
+--   lieEquipe    vrai : l'objet fabriqué est lié quand équipé (nécessite estLieEquipe) ; une recette sans objet, ou dont
+--                le jeu n'a pas encore donné l'information, est écartée
+--   estLieEquipe fonction(itemID) -> booléen ou nil (nil : information pas encore connue)
 -- Renvoie la liste des spellIDs, du plus bas niveau au plus haut.
 function Catalogue:Chercher(options)
 	options = options or {}
@@ -184,6 +187,11 @@ function Catalogue:Chercher(options)
 				end
 				garde = present
 			end
+		end
+
+		-- En dernier : c'est le filtre qui interroge le jeu, autant ne le faire que pour les recettes déjà retenues.
+		if garde and options.lieEquipe then
+			garde = r.objet ~= nil and r.objet > 0 and options.estLieEquipe ~= nil and options.estLieEquipe(r.objet) == true
 		end
 
 		if garde then resultat[#resultat + 1] = spellID end

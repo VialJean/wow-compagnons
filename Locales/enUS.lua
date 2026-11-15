@@ -107,6 +107,7 @@ ns.Textes.enUS = {
 	FILTRE_CRAFTABLE = "Craftable in the guild",
 	FILTRE_EN_LIGNE = "Crafter online",
 	FILTRE_INCONNUE = "Nobody knows it",
+	FILTRE_LIE_EQUIPE = "Bind on equip",
 	METIERS = "Professions",
 	TOUS_METIERS = "All",
 	ONGLET_RECETTES = "Recipes",

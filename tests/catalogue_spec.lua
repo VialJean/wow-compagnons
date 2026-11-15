@@ -103,6 +103,19 @@ describe("Catalogue", function()
 		assert.are.same({ 3000 }, c:Chercher({ inconnue = true }))
 	end)
 
+	it("filtre les objets liés quand équipés", function()
+		local lies = { [2455] = true, [9999] = false } -- 2454 : pas encore connu (nil)
+		local function estLie(itemID) return lies[itemID] end
+		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, estLieEquipe = estLie }))
+		-- se combine aux autres filtres, et ne touche pas aux recettes sans objet (enchantements)
+		assert.are.same({}, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, inconnue = true }))
+		assert.are.same({ 2331 }, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, metier = 171 }))
+		assert.are.same({}, c:Chercher({ lieEquipe = true, estLieEquipe = estLie, metier = 333 }))
+		-- sans fonction, ou sans le filtre : rien de changé
+		assert.are.same({}, c:Chercher({ lieEquipe = true }))
+		assert.are.same(c:Chercher({}), c:Chercher({ estLieEquipe = estLie }))
+	end)
+
 	it("filtre les crafteurs en ligne", function()
 		local enLigne = { ["Brumefer-Royaume"] = true }
 		local r = c:Chercher({ enLigne = true, estEnLigne = function(cle) return enLigne[cle] end })

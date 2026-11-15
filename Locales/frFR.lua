@@ -106,6 +106,7 @@ ns.Textes.frFR = {
 	FILTRE_CRAFTABLE = "Craftable dans la guilde",
 	FILTRE_EN_LIGNE = "Crafteur en ligne",
 	FILTRE_INCONNUE = "Personne ne la connaît",
+	FILTRE_LIE_EQUIPE = "Lié quand équipé",
 	METIERS = "Métiers",
 	TOUS_METIERS = "Tous",
 	ONGLET_RECETTES = "Recettes",

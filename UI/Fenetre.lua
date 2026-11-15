@@ -150,12 +150,44 @@ local function creerCadre(parent)
 end
 
 function Fenetre:OnEnable()
-	self.filtres = { craftable = false, enLigne = false, inconnue = false }
+	self.filtres = { craftable = false, enLigne = false, inconnue = false, lieEquipe = false }
 	self.texte = ""
 	self.metier = nil
 	self.onglet = 1
+	self.demandes = {} -- objets dont on a demandé les informations au jeu (filtre « lié quand équipé »)
 	self:RegisterMessage("COMPAGNONS_CATALOGUE_MAJ", "SurMiseAJour")
 	self:RegisterMessage("COMPAGNONS_COMMANDES_MAJ", "SurCommandes")
+	self:RegisterEvent("GET_ITEM_INFO_RECEIVED", "SurObjetCharge")
+end
+
+--- Un objet demandé au jeu vient d'arriver : si le filtre « lié quand équipé » attendait, on recalcule la liste (une seule fois
+-- pour un lot d'arrivées).
+function Fenetre:SurObjetCharge()
+	if not self.filtres.lieEquipe or self.rafraichissementPrevu then return end
+	if not (self.cadre and self.cadre:IsShown()) then return end
+	self.rafraichissementPrevu = true
+	C_Timer.After(0.3, function()
+		self.rafraichissementPrevu = false
+		self:Rafraichir()
+	end)
+end
+
+--- L'objet fabriqué est-il lié quand équipé ? nil tant que le jeu ne l'a pas dit (on le lui demande, une seule fois).
+function Fenetre:EstLieEquipe(itemID)
+	local lire = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+	if not lire then return nil end
+	-- 14e valeur : type de liaison (0 aucun, 1 ramassé, 2 équipé, 3 utilisé, 4 quête). Certains clients renvoient une table.
+	local ok, nom, _, _, _, _, _, _, _, _, _, _, _, _, liaison = pcall(lire, itemID)
+	if ok and type(nom) == "table" then liaison = nom.bindType end
+	if not ok or liaison == nil then
+		if not self.demandes[itemID] then
+			self.demandes[itemID] = true
+			if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, itemID) end
+		end
+		return nil
+	end
+	local equipe = (Enum and Enum.ItemBind and Enum.ItemBind.OnEquip) or 2
+	return liaison == equipe
 end
 
 function Fenetre:SurMiseAJour()
@@ -253,6 +285,7 @@ function Fenetre:CreerRecherche(f)
 			option(L.FILTRE_CRAFTABLE, "craftable")
 			option(L.FILTRE_EN_LIGNE, "enLigne")
 			option(L.FILTRE_INCONNUE, "inconnue")
+			option(L.FILTRE_LIE_EQUIPE, "lieEquipe")
 		end)
 	end
 	self.filtre = filtre
@@ -536,6 +569,8 @@ function Fenetre:Options(sansMetier)
 		craftable = self.filtres.craftable,
 		enLigne = self.filtres.enLigne,
 		inconnue = self.filtres.inconnue,
+		lieEquipe = self.filtres.lieEquipe,
+		estLieEquipe = function(itemID) return self:EstLieEquipe(itemID) end,
 		estEnLigne = ns.estEnLigne,
 	}
 end
