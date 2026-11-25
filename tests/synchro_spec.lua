@@ -2,7 +2,7 @@
 -- avec connexions, déconnexions et scans aléatoires. Vérifie que tous les clients convergent. busted tests
 local function charger()
 	local ns = {}
-	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Prix.lua", "Core/Synchro.lua" }) do
+	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Annonces.lua", "Core/Prix.lua", "Core/Synchro.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
 	return ns
@@ -83,11 +83,12 @@ local function nouveauReseau(graine)
 	end
 
 	function r:client(nom)
-		local c = { nom = nom, profils = {}, commandes = {}, prix = {}, enLigne = false }
+		local c = { nom = nom, profils = {}, commandes = {}, annonces = {}, prix = {}, enLigne = false }
 		c.moteur = Synchro.nouveau({
 			donnees = donnees,
 			profils = c.profils,
 			commandes = c.commandes,
+			annonces = c.annonces,
 			prix = c.prix,
 			moi = function() return nom end,
 			proprietaire = function(cle) return cle == nom end,
@@ -792,5 +793,162 @@ describe("Synchro des prix de vendeur", function()
 		r:avancer(60)
 		assert.are.equal(100, a.prix[5001].p)
 		assert.are.equal(100, b.prix[5001].p)
+	end)
+end)
+
+-- ---------------------------------------------------------------------------------------------
+-- Petites annonces (protocole 4)
+-- ---------------------------------------------------------------------------------------------
+
+describe("Synchro des petites annonces", function()
+	it("une annonce publiée en ligne arrive chez les autres", function()
+		local r, a, b = deuxClients(60)
+		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1001, mats = "tout", note = "Sacs" }))
+		r:avancer(2)
+		assert.are.equal("Sacs", b.annonces[an.id].note)
+		assert.are.equal("offre", b.annonces[an.id].genre)
+		assert.is_true(identiques({ a, b }))
+	end)
+
+	it("une modification, une reconduction et un retrait se propagent, par l'auteur seul", function()
+		local r, a, b = deuxClients(61)
+		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "demande", item = 5001 }))
+		r:avancer(2)
+		assert.is_nil(b.moteur:AgirAnnonce(an.id, "retirer", b.nom)) -- pas l'auteur
+		assert.is_not_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { note = "Laine, beaucoup" }))
+		r:avancer(2)
+		assert.are.equal("Laine, beaucoup", b.annonces[an.id].note)
+		assert.are.equal(1, b.annonces[an.id].rev)
+		assert.is_not_nil(a.moteur:AgirAnnonce(an.id, "retirer", a.nom))
+		r:avancer(2)
+		assert.is_true(b.annonces[an.id].retire)
+		assert.is_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { note = "trop tard" })) -- retirée
+		assert.is_true(identiques({ a, b }))
+	end)
+
+	it("limite à cinq annonces actives par auteur", function()
+		local _, a = deuxClients(62)
+		for i = 1, 5 do assert.is_not_nil(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1000 + i })) end
+		local an, raison = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1010 })
+		assert.is_nil(an)
+		assert.are.equal("limite", raison)
+	end)
+
+	it("refuse ce qu'un autre prétend écrire au nom de l'auteur", function()
+		local r, a, b = deuxClients(63)
+		local an = ns.Annonces.nouvelle({ auteur = a.nom, genre = "offre", spell = 1001, maintenant = r.t })
+		-- b diffuse en direct une annonce qui porte le nom de a : refusée
+		assert.is_false(a.moteur:IntegrerAnnonce(an, b.nom))
+		assert.is_false(a.moteur:IntegrerAnnonce(an, "Intrus Quelconque"))
+		-- l'identifiant doit commencer par l'auteur
+		local faux = copie(an)
+		faux.id = b.nom .. "#1#1"
+		assert.is_false(b.moteur:IntegrerAnnonce(faux))
+	end)
+
+	it("ignore les annonces invalides", function()
+		local r, a = deuxClients(64)
+		local base = ns.Annonces.nouvelle({ auteur = a.nom, genre = "offre", spell = 1001, maintenant = r.t })
+		for _, mutation in ipairs({
+			function(x) x.genre = "autre" end,
+			function(x) x.spell = 999999 end,
+			function(x) x.item = 5001 end,                -- une recette ET un objet
+			function(x) x.mats = "n'importe" end,
+			function(x) x.rev = -1 end,
+			function(x) x.spell = nil; x.item = 5001 end, -- une offre ne vise pas un simple objet
+		}) do
+			local x = copie(base)
+			mutation(x)
+			assert.is_false(a.moteur:IntegrerAnnonce(x), "mutation acceptée")
+		end
+	end)
+
+	it("synchronise les annonces manquées pendant une déconnexion", function()
+		local r, a, b = deuxClients(65)
+		b.enLigne = false
+		local an = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1002 })
+		r:avancer(5)
+		assert.is_nil(b.annonces[an.id])
+		connecter(b)
+		r:avancer(60)
+		assert.is_not_nil(b.annonces[an.id])
+		assert.is_true(identiques({ a, b }))
+	end)
+
+	it("oublie les annonces expirées et les annonces retirées depuis 7 jours", function()
+		local r, a, b = deuxClients(66)
+		local ancienne = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1003 })
+		local retiree = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1004 })
+		a.moteur:AgirAnnonce(retiree.id, "retirer", a.nom)
+		r:avancer(5)
+		assert.is_not_nil(b.annonces[ancienne.id])
+		r:avancer(8 * 24 * 3600)
+		a.moteur:Nettoyer() ; b.moteur:Nettoyer()
+		assert.is_nil(a.annonces[retiree.id])
+		assert.is_nil(b.annonces[retiree.id])
+		assert.is_not_nil(a.annonces[ancienne.id]) -- 8 jours : encore valable
+		r:avancer(23 * 24 * 3600)
+		a.moteur:Nettoyer() ; b.moteur:Nettoyer()
+		assert.is_nil(a.annonces[ancienne.id])
+	end)
+
+	it("un client resté en protocole 3 est ignoré, et ne l'ignore pas en retour sans le dire", function()
+		local r, a, b = deuxClients(67)
+		local an = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1001 })
+		r:avancer(2)
+		-- b reçoit un message d'un pair en v3 : rien n'est intégré
+		b.moteur:Recevoir("ANNONCE", { v = 3, annonce = copie(an) }, "Vieux Pair")
+		assert.is_nil(b.annonces["Vieux Pair#1#1"])
+	end)
+
+	it("converge avec 12 clients, annonces et commandes mêlées", function()
+		local r = nouveauReseau(310)
+		local taille = 12
+		for i = 1, taille do
+			local c = r:client(string.format("Membre%02d Test%02d", i, i))
+			c.profils[c.nom] = profilAleatoire(r.alea, c.nom, 1000 + i)
+		end
+		for _ = 1, taille * 12 do
+			r:avancer(1 + r.alea() * 30)
+			local c = r.clients[math.floor(r.alea() * taille) + 1]
+			local tirage = r.alea()
+			if not c.enLigne then
+				connecter(c)
+			elseif tirage < 0.1 then
+				c.enLigne = false
+			elseif tirage < 0.4 then
+				c.moteur:CreerAnnonce({ auteur = c.nom, genre = r.alea() < 0.5 and "offre" or "demande",
+					spell = 1000 + math.floor(r.alea() * 64) + 1, mats = "partie" })
+			elseif tirage < 0.6 then
+				c.moteur:CreerCommande({ client = c.nom, spell = 1001, qte = 2, mats = "partie" })
+			else
+				local ids = {}
+				for id, a in pairs(c.annonces) do
+					if a.auteur == c.nom then ids[#ids + 1] = id end
+				end
+				table.sort(ids)
+				if #ids > 0 then
+					local id = ids[math.floor(r.alea() * #ids) + 1]
+					local actions = { "reconduire", "retirer", "modifier" }
+					c.moteur:AgirAnnonce(id, actions[math.floor(r.alea() * 3) + 1], c.nom, { note = "n" .. math.floor(r.alea() * 99) })
+				end
+			end
+		end
+		for _, c in ipairs(r.clients) do
+			if c.enLigne then c.moteur:Annoncer() else connecter(c) end
+			r:avancer(3)
+		end
+		r:avancer(900)
+		assert.is_true(identiques(r.clients))
+		local n = r.clients[1].moteur:CompterAnnonces()
+		assert.is_true(n > 0)
+		for _, c in ipairs(r.clients) do assert.are.equal(n, c.moteur:CompterAnnonces()) end
+		for _, c in ipairs(r.clients) do
+			local actives = {}
+			for _, a in pairs(c.annonces) do
+				if not a.retire then actives[a.auteur] = (actives[a.auteur] or 0) + 1 end
+			end
+			for _, nb in pairs(actives) do assert.is_true(nb <= 5) end
+		end
 	end)
 end)

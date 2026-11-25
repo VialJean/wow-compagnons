@@ -39,7 +39,8 @@ local function stock(id)
 	return 0
 end
 
-function Dialogue:Ouvrir(spellID)
+--- Ouvre le dialogue sur une recette. `preset` (facultatif) : { crafteur, mats }, par exemple depuis une offre de la guilde.
+function Dialogue:Ouvrir(spellID, preset)
 	if not self.cadre then
 		if not securise("création du dialogue", self.Creer, self) then return end
 	end
@@ -47,6 +48,13 @@ function Dialogue:Ouvrir(spellID)
 	self.qte = 1
 	self.crafteur = nil
 	self.mats = "partie"
+	if preset then
+		if preset.mats == "tout" or preset.mats == "partie" or preset.mats == "crafteur" then self.mats = preset.mats end
+		-- Le crafteur désigné doit connaître la recette : sinon la commande resterait sans preneur possible.
+		for _, c in ipairs(ns.catalogue:Crafteurs(spellID)) do
+			if c.cle == preset.crafteur then self.crafteur = c.cle end
+		end
+	end
 	self.cadre.note:SetText("")
 	self:FixerPourboire(0)
 	self:Actualiser()

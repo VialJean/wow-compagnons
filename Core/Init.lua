@@ -22,6 +22,7 @@ local defauts = {
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
 		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
 		prixObjets = {},  -- prix d'achat des objets fabricables, locaux (pas synchronisés) : [itemID] = { p, t, v }
+		annonces = {},    -- petites annonces de la guilde, synchronisées (Core/Annonces.lua) : [id] = annonce
 		historique = {},  -- commandes terminées ou annulées, locales (Core/Historique.lua) : liste d'entrées
 		favoris = {},     -- recettes favorites du compte, locales, jamais synchronisées : [spellID] = true
 		prix = {},        -- prix unitaires des composants à l'hôtel des ventes : [itemID] = { p, t }
