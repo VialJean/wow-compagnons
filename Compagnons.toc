@@ -63,6 +63,7 @@ UI\OngletCommandes.lua
 UI\OngletMembres.lua
 UI\DialogueCommande.lua
 UI\Courses.lua
+UI\Options.lua
 UI\ArbreCraft.lua
 UI\PanneauMetier.lua
 UI\Infobulles.lua

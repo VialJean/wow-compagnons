@@ -41,7 +41,7 @@ read_globals = {
 	"GetTradePlayerItemLink", "GetTradeTargetItemLink", "StaticPopup_Show", "GetTradePlayerItemInfo", "GetTradeTargetItemInfo", "GetPlayerTradeMoney", "GetTargetTradeMoney",
 	"GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxItem", "GetSendMailItem", "GetSendMailMoney", "ITEM_QUALITY_COLORS", "Enum", "TooltipDataProcessor", "ItemRefTooltip", "ShoppingTooltip1", "IsShiftKeyDown", "IsControlKeyDown",
 	"HandleModifiedItemClick", "ContainerFrameItemButton_OnModifiedClick", "hooksecurefunc",
-	"ButtonFrameTemplate_HidePortrait", "InCombatLockdown",
+	"ButtonFrameTemplate_HidePortrait", "InCombatLockdown", "Settings",
 }
 
 files["tests/"] = { std = "+busted" }

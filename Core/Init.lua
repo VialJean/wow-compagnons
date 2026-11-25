@@ -136,6 +136,8 @@ function Compagnons:Commande(saisie)
 		self:GetModule("Rappels"):Commande(arg)
 	elseif action == "avertir" then
 		self:GetModule("Avertissement"):Commande(arg, arg2)
+	elseif action == "options" then
+		self:GetModule("Options"):Ouvrir()
 	elseif action == "debug" then
 		local p = self.db.profile
 		p.debug = not p.debug
@@ -152,6 +154,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_SYNC)
 		print("  " .. L.AIDE_AVERTIR)
+		print("  " .. L.AIDE_OPTIONS)
 		print("  " .. L.AIDE_RAPPELS)
 		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_OBSERVER)
