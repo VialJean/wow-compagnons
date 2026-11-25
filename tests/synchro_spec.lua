@@ -2,7 +2,7 @@
 -- avec connexions, déconnexions et scans aléatoires. Vérifie que tous les clients convergent. busted tests
 local function charger()
 	local ns = {}
-	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Prix.lua", "Core/Synchro.lua" }) do
+	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Prix.lua", "Core/Synchro.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
 	return ns

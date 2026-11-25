@@ -7,6 +7,7 @@
 --     crafteur = nil | "Prénom Nom",    -- crafteur désigné, ou nil : ouvert à tous
 --     mats = "tout" | "partie" | "crafteur",   -- qui fournit les composants
 --     note = "",                        -- 120 caractères au plus
+--     pourboire = nil | 25000,          -- promesse du client au crafteur, en cuivre (hors hash : voir Pourboire)
 --     statut = "ouverte" | "prise" | "mats" | "livree" | "terminee" | "annulee",
 --     assigne = nil | "Prénom Nom",     -- crafteur qui a pris la commande
 --     rev = 0,                          -- numéro de révision : un par transition
@@ -40,6 +41,12 @@ local compteur = 0
 local function texte(v, max)
 	if type(v) ~= "string" then return nil end
 	return v:sub(1, max)
+end
+
+--- Pourboire valide et non nul, ou nil. Hors du hash : une ancienne version ignore le champ sans se croire désynchronisée.
+local function pourboire(v)
+	local n = ns.Pourboire.normaliser(v)
+	return n and n > 0 and n or nil
 end
 
 function Commandes.estFinale(o)
@@ -81,6 +88,7 @@ function Commandes.nouvelle(o)
 		crafteur = o.crafteur,
 		mats = MATS[o.mats] and o.mats or "partie",
 		note = texte(o.note or "", MAX_NOTE),
+		pourboire = pourboire(o.pourboire),
 		statut = "ouverte",
 		rev = 0,
 		cree = o.maintenant,
@@ -111,6 +119,7 @@ function Commandes.valider(brut, donnees)
 		crafteur = texte(brut.crafteur, 64),
 		mats = brut.mats,
 		note = texte(brut.note or "", MAX_NOTE) or "",
+		pourboire = pourboire(brut.pourboire),
 		statut = brut.statut,
 		assigne = texte(brut.assigne, 64),
 		rev = math.floor(brut.rev), cree = brut.cree, maj = brut.maj,

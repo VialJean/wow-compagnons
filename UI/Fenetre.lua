@@ -160,7 +160,7 @@ end
 
 function Fenetre:SurMiseAJour()
 	if self.cadre and self.cadre:IsShown() then
-		self:Rafraichir()
+		self:Rafraichir(true)
 		self:RafraichirMembres()
 	end
 end
@@ -220,7 +220,7 @@ function Fenetre:Creer()
 	f.pied = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.pied:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 8)
 
-	f:SetScript("OnShow", function() self:Rafraichir() end)
+	f:SetScript("OnShow", function() self:Rafraichir(true) end)
 	return true
 end
 
@@ -457,13 +457,21 @@ function Fenetre:CreerDetail(f)
 	d.aucunCrafteur:SetText(L.PERSONNE_CONNAIT)
 
 	d.commander = CreateFrame("Button", nil, cadre, "UIPanelButtonTemplate")
-	d.commander:SetSize(LARGEUR_DETAIL - 28, 26)
-	d.commander:SetPoint("BOTTOM", cadre, "BOTTOM", 0, 12)
+	d.commander:SetSize((LARGEUR_DETAIL - 28) / 2 - 3, 26)
+	d.commander:SetPoint("BOTTOMLEFT", cadre, "BOTTOMLEFT", 14, 12)
 	d.commander:SetText(L.COMMANDER)
 	d.commander:SetScript("OnClick", function()
 		if self.selection then ns.Dialogue:Ouvrir(self.selection) end
 	end)
 	self.boutonCommander = d.commander
+
+	d.arbre = CreateFrame("Button", nil, cadre, "UIPanelButtonTemplate")
+	d.arbre:SetSize((LARGEUR_DETAIL - 28) / 2 - 3, 26)
+	d.arbre:SetPoint("BOTTOMRIGHT", cadre, "BOTTOMRIGHT", -14, 12)
+	d.arbre:SetText(L.ARBRE_BOUTON)
+	d.arbre:SetScript("OnClick", function()
+		if self.selection and ns.ArbreCraftUI then ns.ArbreCraftUI:Ouvrir(self.selection) end
+	end)
 end
 
 function Fenetre:CreerOnglets(f)
@@ -503,7 +511,7 @@ function Fenetre:ChoisirOnglet(numero)
 	if self.vueCommandes then self.vueCommandes:SetShown(numero == 2) end
 	if self.vueMembres then self.vueMembres:SetShown(numero == 3) end
 	if numero == 1 then
-		self:Rafraichir()
+		self:Rafraichir(true)
 	elseif numero == 2 then
 		self:RafraichirCommandes()
 	else
@@ -542,7 +550,10 @@ function Fenetre:Options(sansMetier)
 	}
 end
 
-function Fenetre:Rafraichir()
+--- Remplit les listes et le détail d'après les filtres. `garder` : les données ont changé mais pas la recherche
+-- (synchro, scan, passage en ligne d'un membre, réouverture) ; la liste des recettes garde alors sa position de défilement
+-- au lieu de remonter en haut. Une recherche, un filtre ou un métier différents repartent du haut.
+function Fenetre:Rafraichir(garder)
 	if not self.cadre or not self.cadre:IsShown() or self.onglet ~= 1 then return end
 	local catalogue = ns.catalogue
 	if not catalogue then return end
@@ -564,7 +575,7 @@ function Fenetre:Rafraichir()
 	rafraichirLignes(self.listeMetiers)
 
 	local liste = catalogue:Chercher(self:Options())
-	remplir(self.listeRecettes, liste, false)
+	remplir(self.listeRecettes, liste, garder)
 	self.cadreRecettes.vide:SetShown(#liste == 0)
 	self.cadre.nbResultats:SetText(string.format(L.RESULTATS, #liste))
 

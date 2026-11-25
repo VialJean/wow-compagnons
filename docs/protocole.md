@@ -106,6 +106,7 @@ Une commande est un instantané complet, avec un numéro de révision `rev` (une
   crafteur = nil,            -- crafteur désigné, ou nil : ouvert à tous
   mats = "partie",           -- "tout" | "partie" | "crafteur" : qui fournit les composants
   note = "",                 -- 120 caractères au plus
+  pourboire = nil,           -- promesse du client au crafteur, en cuivre (1 à 1 000 000 000), absent si nul
   statut = "ouverte",        -- ouverte | prise | mats | livree | terminee | annulee
   assigne = nil,             -- crafteur qui a pris la commande
   rev = 0, cree = 1731180062, maj = 1731180062, par = "Prénom Nom",
@@ -127,6 +128,15 @@ livraison (retour à `ouverte`), le client peut **annuler** tant que la commande
 | libérer | prise, mats | le crafteur assigné |
 | annuler | ouverte, prise, mats, livree | le client |
 | progres | prise, mats | le crafteur assigné (nombre fabriqué, vers le haut seulement) |
+
+### Pourboire (compatible v3)
+
+Une commande peut porter `pourboire`, un montant en cuivre que le client promet au crafteur. Comme les prix, il est **hors du
+hash** de la commande et garde `v = 3` : une ancienne version ignore le champ (elle ne le garde pas, mais ne se croit pas
+désynchronisée). Il est fixé à la création et ne change plus (pour le modifier, le client annule et republie). À la réception,
+un montant qui n'est pas un nombre entier de cuivre entre 0 et 1 000 000 000 est ignoré (la commande reste valide, sans
+pourboire). L'addon ne verse jamais rien : c'est une mention affichée, que le client remet lui-même (échange ou courrier).
+Limite : une commande qui passe par une version antérieure à la 0.6 perd son pourboire chez les pairs qui reçoivent cette copie.
 
 ### Règles
 
@@ -156,6 +166,7 @@ commandes aléatoires, latence, messages forgés) : tous les clients convergent 
 | 1 | 0.1 | profils de personnages, `HELLO` / `PRET` / `HASHES` / `PROFILE*` |
 | 2 | 0.2 à 0.4 | commandes (`ORDER*`), format de `HASHES` et `PROFILE_REQ` ; prix (`PRIX*`, `hp`, `x`) et progression des fabrications ajoutés **sans** changer de version (champs facultatifs ignorés par les anciennes) |
 | 3 | 0.5 | état `livree`, actions `livrer`, `confirmer`, `contester` (remplacent `terminer`) ; le client écrit désormais des transitions |
+| 3 | 0.6 | `pourboire` facultatif sur les commandes, **sans** changer de version (hors hash, ignoré par les anciennes) |
 
 **Pourquoi une rupture en 3.** Un état inconnu fait rejeter la commande par une version 2, et une confirmation écrite par le client
 (auteur différent du crafteur) échouerait à sa validation, avec des demandes répétées à chaque synchro. Il n'y a donc pas de

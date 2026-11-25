@@ -5,7 +5,7 @@ local function charger(fichiers)
 	return ns
 end
 
-local ns0 = charger({ "Core/Profil.lua", "Core/Commandes.lua", "Core/Progres.lua" })
+local ns0 = charger({ "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Progres.lua" })
 local Progres = ns0.Progres
 
 local function commande(id, cree, extra)
@@ -73,7 +73,7 @@ end)
 -- ---------------------------------------------------------------------------------------------
 
 local function monter()
-	local ns = charger({ "Core/Profil.lua", "Core/Commandes.lua", "Core/Progres.lua" })
+	local ns = charger({ "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Progres.lua" })
 	local module = {}
 	function module:RegisterEvent() end
 	local messages = {}

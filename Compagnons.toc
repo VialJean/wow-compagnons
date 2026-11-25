@@ -27,6 +27,8 @@ Core\Livraison.lua
 Core\Assistance.lua
 Core\Stock.lua
 Core\Prix.lua
+Core\Pourboire.lua
+Core\ArbreCraft.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
@@ -61,6 +63,7 @@ UI\OngletCommandes.lua
 UI\OngletMembres.lua
 UI\DialogueCommande.lua
 UI\Courses.lua
+UI\ArbreCraft.lua
 UI\PanneauMetier.lua
 UI\Infobulles.lua
 UI\Alertes.lua

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+
+- **Tips:** when you post an order, a new "Tip for the crafter" field (gold and silver) promises the crafter a sum on top of the reagents. A "Suggested" button fills in about 10% of the reagent cost, from the prices you have recorded. The tip shows on the order row and in its tooltip. The addon never sends money: you hand the tip over yourself, by trade or mail, as for any delivery. The tip is fixed when the order is posted; to change it, cancel the order and post it again. Guildmates still on 0.5.x see the order without the tip, and sync is unchanged.
+- **Craft tree:** a new "Craft tree" button in the recipe details shows what to craft, step by step, down to raw materials (ore → bar → item), with the number of crafts, the left-overs, your stock across all your characters and the estimated cost of the raw materials. The "+" and "-" buttons change the number of items.
+- **Fix:** the recipe list no longer jumps back to the top while you scroll. Each time the guild data changed (a sync, a scan, someone coming online) the list was rebuilt from the top; it now keeps its position, and only a new search, filter or profession goes back to the top.
+
+---
+
+## 0.6.0 (français)
+
+- **Pourboires :** en publiant une commande, un nouveau champ « Pourboire pour le crafteur » (or et argent) promet une somme au crafteur en plus des composants. Un bouton « Suggéré » remplit environ 10 % du coût des composants, d'après les prix relevés. Le pourboire apparaît sur la ligne de la commande et dans son infobulle. L'addon n'envoie jamais d'argent : vous remettez le pourboire vous-même, par échange ou courrier, comme pour toute livraison. Il est fixé à la publication ; pour le changer, annulez la commande et publiez-la de nouveau. Les membres restés en 0.5.x voient la commande sans le pourboire, et la synchro n'est pas coupée.
+- **Arbre de craft :** un nouveau bouton « Arbre de craft » dans le détail d'une recette montre ce qu'il faut fabriquer, étage par étage, jusqu'aux matières premières (minerai → barre → objet), avec le nombre de fabrications, les surplus, votre stock sur tous vos personnages et le coût estimé des matières premières. Les boutons « + » et « - » changent le nombre d'objets.
+- **Correction :** la liste des recettes ne remonte plus en haut pendant que l'on défile. À chaque changement des données de guilde (une synchro, un scan, un membre qui se connecte), la liste était reconstruite depuis le haut ; elle garde maintenant sa position, et seule une nouvelle recherche, un filtre ou un autre métier la ramène en haut.
+
+---
+
 ## 0.5.3
 
 - **Version warning, quieter:** the pop-up window, the central text and the sound no longer appear by default, not even once at login. The chat line, the red banner in the workshop window, the "!" on the minimap button and the Members tab still tell you. `/cpg warn silent off` brings the window and sound back.

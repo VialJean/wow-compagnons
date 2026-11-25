@@ -48,6 +48,7 @@ function Dialogue:Ouvrir(spellID)
 	self.crafteur = nil
 	self.mats = "partie"
 	self.cadre.note:SetText("")
+	self:FixerPourboire(0)
 	self:Actualiser()
 	self.cadre:Show()
 end
@@ -59,7 +60,7 @@ end
 function Dialogue:Creer()
 	local f = CreateFrame("Frame", "CompagnonsOrderDialog", UIParent, "ButtonFrameTemplate")
 	self.cadre = f
-	f:SetSize(480, 560)
+	f:SetSize(480, 620)
 	f:SetFrameStrata("DIALOG")
 	f:SetClampedToScreen(true)
 	f:SetMovable(true)
@@ -250,6 +251,43 @@ function Dialogue:Creer()
 	f.exemple:SetPoint("TOPLEFT", f.note, "BOTTOMLEFT", -4, -2)
 	f.exemple:SetText(L.NOTE_EXEMPLE)
 
+	-- Pourboire : une promesse affichée sur la commande, remise par le joueur lui-même (jamais envoyée par l'addon).
+	local etiquettePourboire = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	etiquettePourboire:SetPoint("TOPLEFT", f.exemple, "BOTTOMLEFT", 0, -12)
+	etiquettePourboire:SetText(L.POURBOIRE)
+	local function champ(precedent, lettres, largeur, unite)
+		local e = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+		e:SetSize(largeur, 22)
+		e:SetPoint("LEFT", precedent, precedent == etiquettePourboire and "BOTTOMLEFT" or "RIGHT",
+			precedent == etiquettePourboire and 4 or 24, precedent == etiquettePourboire and -16 or 0)
+		e:SetAutoFocus(false)
+		e:SetNumeric(true)
+		e:SetMaxLetters(lettres)
+		e:SetJustifyH("CENTER")
+		e:SetScript("OnEnterPressed", function(c) c:ClearFocus() end)
+		e:SetScript("OnEscapePressed", function(c) c:ClearFocus() end)
+		e.unite = e:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		e.unite:SetPoint("LEFT", e, "RIGHT", 4, 0)
+		e.unite:SetText(unite)
+		return e
+	end
+	f.pourboireOr = champ(etiquettePourboire, 6, 56, L.POURBOIRE_OR)
+	f.pourboireArgent = champ(f.pourboireOr, 2, 28, L.POURBOIRE_ARGENT)
+	f.pourboireSuggere = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	f.pourboireSuggere:SetSize(190, 22)
+	f.pourboireSuggere:SetPoint("LEFT", f.pourboireArgent, "RIGHT", 30, 0)
+	f.pourboireSuggere:SetScript("OnClick", function(bouton)
+		self:FixerPourboire(bouton.montant or 0)
+	end)
+	f.pourboireSuggere:SetScript("OnEnter", function(bouton)
+		if GameTooltip then
+			GameTooltip:SetOwner(bouton, "ANCHOR_TOP")
+			GameTooltip:SetText(L.POURBOIRE_AIDE, 1, 1, 1, 1, true)
+			GameTooltip:Show()
+		end
+	end)
+	f.pourboireSuggere:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
 	-- Pied
 	f.visible = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.visible:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 18)
@@ -269,6 +307,19 @@ function Dialogue:Creer()
 	f.annuler:SetScript("OnClick", function() f:Hide() end)
 
 	return true
+end
+
+--- Affiche un montant (cuivre) dans les champs du pourboire.
+function Dialogue:FixerPourboire(cuivre)
+	local o, a = ns.Prix.pieces(cuivre)
+	self.cadre.pourboireOr:SetText(cuivre > 0 and tostring(o) or "")
+	self.cadre.pourboireArgent:SetText(cuivre > 0 and tostring(a) or "")
+end
+
+--- Pourboire saisi, en cuivre (0 si les champs sont vides).
+function Dialogue:Pourboire()
+	local f = self.cadre
+	return ns.Pourboire.composer(f.pourboireOr:GetText(), f.pourboireArgent:GetText(), 0)
 end
 
 function Dialogue:ChangerQuantite(n, depuisSaisie)
@@ -354,6 +405,11 @@ function Dialogue:ActualiserCout()
 		return
 	end
 	local cout = ns.Prix.coutRecette(ns.Recettes, ns.db.global.prix, self.spellID, self.qte, time())
+	-- Le pourboire suggéré suit le coût des composants ; sans prix connu, rien à suggérer.
+	local suggere = ns.Pourboire.suggere(cout.total)
+	f.pourboireSuggere.montant = suggere
+	f.pourboireSuggere:SetShown(suggere > 0)
+	if suggere > 0 then f.pourboireSuggere:SetText(string.format(L.POURBOIRE_SUGGERE, ns.Marche.Argent(suggere))) end
 	if cout.total == 0 and cout.inconnus > 0 then
 		f.cout:SetText("|cffa89c86" .. L.PRIX_AUCUN .. "|r")
 		return
@@ -373,6 +429,7 @@ function Dialogue:Publier()
 		crafteur = self.crafteur,
 		mats = self.mats,
 		note = self.cadre.note:GetText(),
+		pourboire = self:Pourboire(),
 	})
 	if not commande then
 		Compagnons:Print(erreur or L.ACTION_IMPOSSIBLE)
