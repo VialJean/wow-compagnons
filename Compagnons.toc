@@ -33,6 +33,7 @@ Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
 Core\Commandes.lua
+Core\Historique.lua
 Core\Desenchanter.lua
 Core\Infobulles.lua
 Core\Synchro.lua
@@ -57,10 +58,12 @@ Modules\Courriers.lua
 Modules\Stocks.lua
 Modules\Marche.lua
 Modules\Rappels.lua
+Modules\Historique.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
 UI\OngletMembres.lua
+UI\OngletHistorique.lua
 UI\DialogueCommande.lua
 UI\Courses.lua
 UI\Options.lua

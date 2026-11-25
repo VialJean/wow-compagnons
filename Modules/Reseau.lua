@@ -73,6 +73,7 @@ function Reseau:OnEnable()
 		surCommande = function(id, avant, apres)
 			Compagnons:SendMessage("COMPAGNONS_COMMANDE_RECUE", id, avant, apres)
 		end,
+		surOubli = function(c) ns.Historique.archiver(ns.db.global.historique, c, true) end,
 		journal = function(niveau, fmt, ...) ns.log(niveau, "sync", fmt, ...) end,
 	})
 

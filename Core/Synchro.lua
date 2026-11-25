@@ -54,6 +54,7 @@ local DELAI_PRIX = 5          -- regroupe les prix relevés à l'hôtel des vent
 --   prix          table itemID -> { p, t } (prix unitaires des composants)
 --   surPrix       fonction(ids) appelée quand des prix sont modifiés depuis le réseau
 --   surCommande   fonction(id, avant, apres) appelée quand une commande change depuis le réseau
+--   surOubli      fonction(commande) appelée juste avant l'oubli d'une commande périmée (pour l'historique local)
 --   version       version de l'addon (texte), annoncée dans HELLO (champ `a`, informatif)
 --   surVersion    fonction(cle, v, brut, a) appelée pour tout message dont la version de protocole est lisible, **avant** qu'un
 --                 message d'une autre version soit ignoré : c'est ce qui permet de signaler un pair en retard (Core/Versions.lua)
@@ -77,6 +78,7 @@ function Synchro.nouveau(o)
 	s.normaliser = o.normaliser or function(brut) return (brut:gsub("%-", " ")) end
 	s.surMaj = o.surMaj or function() end
 	s.surCommande = o.surCommande or function() end
+	s.surOubli = o.surOubli or function() end
 	s.version = o.version
 	s.surVersion = o.surVersion or function() end
 	s.journal = o.journal or function() end
@@ -128,7 +130,10 @@ end
 function Synchro:Nettoyer()
 	local maintenant = self.maintenant()
 	for id, c in pairs(self.commandes) do
-		if ns.Commandes.perimee(c, maintenant) then self.commandes[id] = nil end
+		if ns.Commandes.perimee(c, maintenant) then
+			self.surOubli(c)
+			self.commandes[id] = nil
+		end
 	end
 end
 

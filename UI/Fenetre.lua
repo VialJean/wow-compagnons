@@ -213,6 +213,7 @@ function Fenetre:Creer()
 	securise("liste des recettes", self.CreerRecettes, self, f)
 	securise("tableau des commandes", self.CreerCommandes, self, f)
 	securise("liste des membres", self.CreerMembres, self, f)
+	securise("historique des commandes", self.CreerHistorique, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
 	securise("bandeau de version", function()
 		if ns.Avertissement then ns.Avertissement:AttacherBandeau(f) end
@@ -503,7 +504,7 @@ end
 
 function Fenetre:CreerOnglets(f)
 	self.onglets = {}
-	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES }
+	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES, L.ONGLET_HISTORIQUE }
 	for i, nom in ipairs(noms) do
 		local onglet = CreateFrame("Button", "CompagnonsFrameTab" .. i, f, "PanelTabButtonTemplate")
 		onglet:SetID(i)
@@ -538,12 +539,15 @@ function Fenetre:ChoisirOnglet(numero)
 	if not recettes then self.cadre.puce:Hide() end
 	if self.vueCommandes then self.vueCommandes:SetShown(numero == 2) end
 	if self.vueMembres then self.vueMembres:SetShown(numero == 3) end
+	if self.vueHistorique then self.vueHistorique:SetShown(numero == 4) end
 	if numero == 1 then
 		self:Rafraichir(true)
 	elseif numero == 2 then
 		self:RafraichirCommandes()
-	else
+	elseif numero == 3 then
 		self:RafraichirMembres()
+	else
+		self:RafraichirHistorique()
 	end
 end
 

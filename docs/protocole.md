@@ -27,6 +27,13 @@ CompagnonsDB = {
     },
     guilde = {},      -- copie synchronisée : sprint synchro
     commandes = {},   -- sprint commandes
+    historique = {    -- 0.6 : commandes terminées ou annulées vues par cette copie, locales, jamais synchronisées
+      { id = "Prénom Nom#1731180062#1", spell = 2329, qte = 5, client = "Prénom Nom", crafteur = "Prénom Nom",
+        cree = 1731180062, fin = 1731200000, issue = "terminee", pourboire = 25000 },
+      -- issue : terminee | annulee | sansconfirmation (livrée, jamais confirmée, oubliée après 7 jours)
+      -- 500 entrées ou 180 jours au plus ; purge au chargement
+    },
+    favoris = { [2329] = true },  -- 0.6 : recettes favorites du compte, locales, jamais synchronisées
     diag = { sessions = 12, premiere = ..., derniere = ..., rapport = { ... } },
   },
   profiles = { ... },  -- réglages AceDB
