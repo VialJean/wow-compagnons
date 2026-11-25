@@ -35,6 +35,7 @@ Core\Profil.lua
 Core\Commandes.lua
 Core\Historique.lua
 Core\Annonces.lua
+Core\Poids.lua
 Core\Ameliorations.lua
 Core\Desenchanter.lua
 Core\Infobulles.lua

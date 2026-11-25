@@ -803,40 +803,39 @@ end)
 describe("Synchro des petites annonces", function()
 	it("une annonce publiée en ligne arrive chez les autres", function()
 		local r, a, b = deuxClients(60)
-		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1001, mats = "tout", note = "Sacs" }))
+		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, texte = "Sacs" }))
 		r:avancer(2)
-		assert.are.equal("Sacs", b.annonces[an.id].note)
-		assert.are.equal("offre", b.annonces[an.id].genre)
+		assert.are.equal("Sacs", b.annonces[an.id].texte)
 		assert.is_true(identiques({ a, b }))
 	end)
 
 	it("une modification, une reconduction et un retrait se propagent, par l'auteur seul", function()
 		local r, a, b = deuxClients(61)
-		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "demande", item = 5001 }))
+		local an = assert(a.moteur:CreerAnnonce({ auteur = a.nom, texte = "Cherche laine" }))
 		r:avancer(2)
 		assert.is_nil(b.moteur:AgirAnnonce(an.id, "retirer", b.nom)) -- pas l'auteur
-		assert.is_not_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { note = "Laine, beaucoup" }))
+		assert.is_not_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { texte = "Laine, beaucoup" }))
 		r:avancer(2)
-		assert.are.equal("Laine, beaucoup", b.annonces[an.id].note)
+		assert.are.equal("Laine, beaucoup", b.annonces[an.id].texte)
 		assert.are.equal(1, b.annonces[an.id].rev)
 		assert.is_not_nil(a.moteur:AgirAnnonce(an.id, "retirer", a.nom))
 		r:avancer(2)
 		assert.is_true(b.annonces[an.id].retire)
-		assert.is_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { note = "trop tard" })) -- retirée
+		assert.is_nil(a.moteur:AgirAnnonce(an.id, "modifier", a.nom, { texte = "trop tard" })) -- retirée
 		assert.is_true(identiques({ a, b }))
 	end)
 
 	it("limite à cinq annonces actives par auteur", function()
 		local _, a = deuxClients(62)
-		for i = 1, 5 do assert.is_not_nil(a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1000 + i })) end
-		local an, raison = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1010 })
+		for i = 1, 5 do assert.is_not_nil(a.moteur:CreerAnnonce({ auteur = a.nom, texte = "m" .. i })) end
+		local an, raison = a.moteur:CreerAnnonce({ auteur = a.nom, texte = "de trop" })
 		assert.is_nil(an)
 		assert.are.equal("limite", raison)
 	end)
 
 	it("refuse ce qu'un autre prétend écrire au nom de l'auteur", function()
 		local r, a, b = deuxClients(63)
-		local an = ns.Annonces.nouvelle({ auteur = a.nom, genre = "offre", spell = 1001, maintenant = r.t })
+		local an = ns.Annonces.nouvelle({ auteur = a.nom, texte = "Sacs", maintenant = r.t })
 		-- b diffuse en direct une annonce qui porte le nom de a : refusée
 		assert.is_false(a.moteur:IntegrerAnnonce(an, b.nom))
 		assert.is_false(a.moteur:IntegrerAnnonce(an, "Intrus Quelconque"))
@@ -848,14 +847,11 @@ describe("Synchro des petites annonces", function()
 
 	it("ignore les annonces invalides", function()
 		local r, a = deuxClients(64)
-		local base = ns.Annonces.nouvelle({ auteur = a.nom, genre = "offre", spell = 1001, maintenant = r.t })
+		local base = ns.Annonces.nouvelle({ auteur = a.nom, texte = "Sacs", maintenant = r.t })
 		for _, mutation in ipairs({
-			function(x) x.genre = "autre" end,
-			function(x) x.spell = 999999 end,
-			function(x) x.item = 5001 end,                -- une recette ET un objet
-			function(x) x.mats = "n'importe" end,
+			function(x) x.texte = "" end,
+			function(x) x.texte = 42 end,
 			function(x) x.rev = -1 end,
-			function(x) x.spell = nil; x.item = 5001 end, -- une offre ne vise pas un simple objet
 		}) do
 			local x = copie(base)
 			mutation(x)
@@ -866,7 +862,7 @@ describe("Synchro des petites annonces", function()
 	it("synchronise les annonces manquées pendant une déconnexion", function()
 		local r, a, b = deuxClients(65)
 		b.enLigne = false
-		local an = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1002 })
+		local an = a.moteur:CreerAnnonce({ auteur = a.nom, texte = "Sacs" })
 		r:avancer(5)
 		assert.is_nil(b.annonces[an.id])
 		connecter(b)
@@ -877,8 +873,8 @@ describe("Synchro des petites annonces", function()
 
 	it("oublie les annonces expirées et les annonces retirées depuis 7 jours", function()
 		local r, a, b = deuxClients(66)
-		local ancienne = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1003 })
-		local retiree = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1004 })
+		local ancienne = a.moteur:CreerAnnonce({ auteur = a.nom, texte = "ancienne" })
+		local retiree = a.moteur:CreerAnnonce({ auteur = a.nom, texte = "retirée" })
 		a.moteur:AgirAnnonce(retiree.id, "retirer", a.nom)
 		r:avancer(5)
 		assert.is_not_nil(b.annonces[ancienne.id])
@@ -894,7 +890,7 @@ describe("Synchro des petites annonces", function()
 
 	it("un client resté en protocole 3 est ignoré, et ne l'ignore pas en retour sans le dire", function()
 		local r, a, b = deuxClients(67)
-		local an = a.moteur:CreerAnnonce({ auteur = a.nom, genre = "offre", spell = 1001 })
+		local an = a.moteur:CreerAnnonce({ auteur = a.nom, texte = "Sacs" })
 		r:avancer(2)
 		-- b reçoit un message d'un pair en v3 : rien n'est intégré
 		b.moteur:Recevoir("ANNONCE", { v = 3, annonce = copie(an) }, "Vieux Pair")
@@ -917,8 +913,7 @@ describe("Synchro des petites annonces", function()
 			elseif tirage < 0.1 then
 				c.enLigne = false
 			elseif tirage < 0.4 then
-				c.moteur:CreerAnnonce({ auteur = c.nom, genre = r.alea() < 0.5 and "offre" or "demande",
-					spell = 1000 + math.floor(r.alea() * 64) + 1, mats = "partie" })
+				c.moteur:CreerAnnonce({ auteur = c.nom, texte = "m" .. math.floor(r.alea() * 99) })
 			elseif tirage < 0.6 then
 				c.moteur:CreerCommande({ client = c.nom, spell = 1001, qte = 2, mats = "partie" })
 			else
@@ -930,7 +925,7 @@ describe("Synchro des petites annonces", function()
 				if #ids > 0 then
 					local id = ids[math.floor(r.alea() * #ids) + 1]
 					local actions = { "reconduire", "retirer", "modifier" }
-					c.moteur:AgirAnnonce(id, actions[math.floor(r.alea() * 3) + 1], c.nom, { note = "n" .. math.floor(r.alea() * 99) })
+					c.moteur:AgirAnnonce(id, actions[math.floor(r.alea() * 3) + 1], c.nom, { texte = "n" .. math.floor(r.alea() * 99) })
 				end
 			end
 		end

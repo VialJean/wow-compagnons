@@ -34,7 +34,7 @@ function Annonces:Toutes()
 	return ns.db.global.annonces
 end
 
---- Publie une annonce au nom du personnage connecté. options : genre, spell | item, mats, note. Renvoie l'annonce, ou nil et
+--- Publie une annonce au nom du personnage connecté. options : texte. Renvoie l'annonce, ou nil et
 -- un message pour le joueur.
 function Annonces:Publier(options)
 	local m = moteur()

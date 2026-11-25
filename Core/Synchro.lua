@@ -311,7 +311,7 @@ end
 --- Intègre une annonce venue du réseau. `expediteur` : l'auteur supposé quand l'annonce est diffusée en direct (seul l'auteur
 -- écrit) ; nil pendant une synchro, où un pair relaie les annonces des autres. Renvoie vrai si notre copie a changé.
 function Synchro:IntegrerAnnonce(brut, expediteur)
-	local a = ns.Annonces.valider(brut, self.donnees)
+	local a = ns.Annonces.valider(brut)
 	if not a then
 		self.journal("warn", "annonce reçue invalide, ignorée")
 		return false
@@ -322,10 +322,7 @@ function Synchro:IntegrerAnnonce(brut, expediteur)
 	local actuelle = self.annonces[a.id]
 	if actuelle then
 		if not ns.Annonces.meilleure(a, actuelle) then return false end
-		-- Une annonce garde sa cible : seules la note, les conditions, la reconduction et le retrait changent.
-		if a.auteur ~= actuelle.auteur or a.genre ~= actuelle.genre or a.spell ~= actuelle.spell or a.item ~= actuelle.item then
-			return false
-		end
+		if a.auteur ~= actuelle.auteur then return false end
 	else
 		if self:CompterAnnonces() >= MAX_ANNONCES then return false end
 		if not a.retire and ns.Annonces.nombreActives(self.annonces, a.auteur, maintenant) >= ns.Annonces.MAX_PAR_AUTEUR then

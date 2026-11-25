@@ -148,22 +148,17 @@ pourboire). L'addon ne verse jamais rien : c'est une mention affichée, que le c
 
 ### Petites annonces (protocole 4)
 
-Une annonce est une intention permanente : une **offre** (« je fabrique ça », sur une recette) ou une **demande** (« je cherche
-ça », sur une recette ou un simple composant). Une annonce peut aussi être de **texte seul** (ni `spell` ni `item`) : la `note`
-est alors obligatoire et fait toute l'annonce.
+Une annonce est un message permanent de la guilde, en texte libre (« cherche un enchanteur pour mes bottes »).
 
 ```lua
-{ id = "Prénom Nom#1731180062#1", auteur = "Prénom Nom", genre = "offre",  -- offre | demande
-  spell = 2329,          -- recette visée, ou
-  item = nil,            -- objet visé (demande seulement) : l'un ou l'autre, jamais les deux ; aucun des deux = texte seul
-  mats = "partie",       -- tout | partie | crafteur : qui fournit les composants
-  note = "",             -- 100 caractères au plus, en clair
+{ id = "Prénom Nom#1731180062#1", auteur = "Prénom Nom",
+  texte = "",            -- obligatoire, 200 caractères au plus, en clair
   rev = 0, maj = 1731180062,   -- révision (une par modification) et dernière reconduction
   retire = nil }         -- true : annonce retirée (la pierre tombale se propage avant d'être oubliée)
 ```
 
 - **Seul l'auteur écrit.** L'identifiant commence par `auteur#`, un `ANNONCE` diffusé en direct n'est accepté que de son auteur,
-  et une copie qui change la cible (genre, recette, objet) ou l'auteur est refusée. **La révision la plus haute gagne**, puis la
+  et une copie qui change l'auteur est refusée. **La révision la plus haute gagne**, puis la
   reconduction la plus récente (`maj`), puis le hash.
 - **Limites** : 5 annonces actives par auteur, 400 annonces gardées. Une annonce expire **30 jours** après sa dernière
   reconduction (l'auteur reconduit les siennes à chaque connexion, ce qui compte une révision) ; une annonce retirée est

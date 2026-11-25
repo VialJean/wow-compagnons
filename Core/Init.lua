@@ -40,6 +40,7 @@ local defauts = {
 		rappels = { actif = true, expiration = true, aConfirmer = 1, sansPreneur = 3, sansProgres = 5, enAttente = 3, ancienne = 30 },
 		avertir = { silencieux = true, connexion = false }, -- silencieux (par défaut) : ni fenêtre, ni texte central, ni son — il reste la ligne dans le chat, le bandeau, la minicarte et l'onglet Membres ; connexion : refaire l'avertissement quand un nouveau membre en retard se connecte (le chuchotement ne part jamais seul)
 		livraison = { suivi = true, confirmer = true, aide = true }, -- suivi des fabrications et des échanges ; confirmer : demande avant d'avancer une commande
+		ameliorations = { specs = {} }, -- spécialisation choisie pour le chercheur d'améliorations, par classe : [classe] = clé (Core/Poids.lua)
 		infobulles = { objet = true, cout = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},

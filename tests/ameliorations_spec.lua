@@ -1,5 +1,6 @@
 -- Tests hors jeu du chercheur d'améliorations (Core/Ameliorations.lua), avec des équipements simulés. busted tests
 local ns = {}
+assert(loadfile("Core/Poids.lua"))("Compagnons", ns)
 assert(loadfile("Core/Ameliorations.lua"))("Compagnons", ns)
 local A = ns.Ameliorations
 
@@ -176,83 +177,61 @@ describe("Ameliorations.chercher", function()
 	end)
 end)
 
-describe("Ameliorations : stats et spécialisation", function()
-	it("le poids d'une stat dépend de la classe et de l'arbre de talents", function()
-		local tank, degats = A.poids("WARRIOR", 3), A.poids("WARRIOR", 1)
-		assert.is_true(tank[12] > (degats[12] or 0))           -- défense
-		assert.is_true(degats[38] > (tank[38] or 0))           -- puissance d'attaque
-		assert.is_true(A.poids("PRIEST", 3)[42] > 0)    -- dégâts des sorts pour l'ombre
-		assert.equal(0, A.poids("PRIEST", 2)[42] or 0)  -- pas pour le soin
-		-- spécialisation inconnue : la liste des stats utiles de la classe, à égalité
-		assert.equal(1, A.poids("WARRIOR", nil)[4])
-		assert.is_nil(A.poids("INCONNUE", 1))
-	end)
-
-	it("l'utilité est la part du budget qui tombe dans les stats recherchées, rapport seul", function()
-		local p = { [4] = 1, [7] = 0.5 }
-		assert.is_near(1, A.utilite(p, { { 4, 100 } }), 1e-9)
-		assert.is_near(0.75, A.utilite(p, { { 4, 5000 }, { 7, 5000 } }), 1e-9)
-		assert.is_near(A.utilite(p, { { 4, 1 }, { 7, 1 } }), A.utilite(p, { { 4, 9000 }, { 7, 9000 } }), 1e-9)
-		-- armure supplémentaire, résistances et types inconnus ne comptent pas
-		assert.is_near(1, A.utilite(p, { { 4, 100 }, { 50, 900000 }, { 51, 7000 }, { 85, 5000 } }), 1e-9)
-		assert.is_nil(A.utilite(p, { { 50, 100 } }))
-		assert.is_nil(A.utilite(p, {}))
-	end)
-
-	it("convertit les stats du jeu en types", function()
-		local l = A.statsDuJeu({ ITEM_MOD_STAMINA_SHORT = 12, ITEM_MOD_STRENGTH_SHORT = 7, ITEM_MOD_INCONNU_SHORT = 3 })
-		assert.same({ { 4, 7 }, { 7, 12 } }, l)
-		assert.is_nil(A.statsDuJeu({}))
-		assert.is_nil(A.statsDuJeu(nil))
-	end)
-
-	it("une grosse armure supplémentaire ne rend pas un objet inutile à la classe", function()
-		assert.is_true(A.pertinent("WARRIOR", { { 7, 2800 }, { 50, 40000 }, { 51, 7200 } }))
-	end)
-
-	local function etoffes(role)
-		-- deux plastrons de même niveau : un à intelligence et puissance des sorts, un à force
-		local d = { recettes = {
-			[1] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 45, 10000 } }),
-			[2] = recette(5, 30, 20, 4, 1, { { 4, 10000 }, { 7, 5000 } }),
-		} }
-		return A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = role }))
+describe("Ameliorations avec une spécialisation", function()
+	local plastrons = { recettes = {
+		[1] = recette(5, 30, 20, 4, 4, { { 4, 10 }, { 7, 8 } }, { objet = 101 }),   -- ilvl 30
+		[2] = recette(5, 24, 20, 4, 4, { { 7, 12 }, { 14, 6 } }, { objet = 102 }),  -- ilvl 24, mais bien meilleur pour un tank
+		[3] = recette(5, 28, 20, 4, 4, {}, { objet = 103 }),                         -- sans stats : niveau d'objet
+		[4] = recette(13, 28, 10, 2, 7, { { 4, 5 } }, { objet = 104 }),             -- arme : toujours le niveau d'objet
+	} }
+	-- Vraies stats lues dans le jeu (les `stats` des recettes ne sont que des parts de budget).
+	local reelles = { [101] = { { 4, 10 }, { 7, 8 } }, [102] = { { 7, 12 }, { 14, 6 } }, [104] = { { 4, 500 } } }
+	local function chercher(spec, equipement, stats)
+		return A.chercher(ctx({ donnees = plastrons, spec = spec, equipement = equipement,
+			statsObjet = function(id) return (stats or reelles)[id] end }))
 	end
+	-- Poids du guerrier protection avant le 60 : endurance 3, parade 0,6, force 0,25.
+	local porte = { [5] = { itemID = 9, ilvl = 26, stats = { { 7, 10 }, { 14, 2 } } } } -- 30 + 1,2 = 31,2
 
-	it("classe d'abord ce qui sert la spécialisation du joueur", function()
-		-- prêtre : l'étoffe force/endurance est écartée par la classe, seul le premier reste
-		assert.same({ 1 }, candidats(etoffes(2), 5))
+	it("compare les scores de stats, pas les niveaux d'objet", function()
+		local r = chercher("protection", porte)
+		-- le 1 (ilvl 30) vaut 2,5 + 24 = 26,5 : moins que l'objet porté ; le 2 (ilvl 24) vaut 39,6 : gain de 8,4
+		assert.same({ 2, 3 }, candidats(r, 5))
+		local c = groupe(r, 5).candidats[1]
+		assert.equal("stats", c.unite)
+		assert.is_true(math.abs(c.gain - 8.4) < 1e-6)
+		assert.equal(26, c.porteIlvl)
+		assert.equal("ilvl", groupe(r, 5).candidats[2].unite) -- le 3, sans stats, retombe sur le niveau d'objet
 	end)
 
-	it("à niveau égal, la spécialisation départage les candidats", function()
-		local d = { recettes = {
-			[1] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 41, 10000 } }),   -- soins
-			[2] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 42, 8000 } }),    -- dégâts
-		} }
-		local soin = candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2 })), 5)
-		local ombre = candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 3 })), 5)
-		assert.same({ 1, 2 }, soin)
-		assert.same({ 2, 1 }, ombre)
+	it("sans spécialisation, ou avec une inconnue, compare le niveau d'objet", function()
+		assert.same({ 1, 3 }, candidats(chercher(nil, porte), 5))
+		assert.same({ 1, 3 }, candidats(chercher("inconnue", porte), 5))
 	end)
 
-	it("un objet de niveau plus haut mais aux stats inutiles ne bat plus un objet porté bien adapté", function()
-		local d = { recettes = {
-			[1] = recette(5, 34, 20, 4, 1, { { 5, 10000 }, { 41, 10000 } }),  -- niveau 34, soins
-		} }
-		local equip = { [5] = { itemID = 9, ilvl = 30, stats = { { 5, 20 }, { 42, 25 } } } } -- niveau 30, dégâts
-		-- ombre : porté très adapté (30 × 0,96 environ), candidat de soins mal adapté : pas proposé
-		assert.same({}, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 3, equipement = equip })), 5))
-		-- soin : le candidat est adapté, le porté ne l'est pas : proposé, même avec un niveau voisin
-		assert.same({ 1 }, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5))
+	it("retombe sur le niveau d'objet sans stats lisibles, pour l'objet porté comme pour le candidat", function()
+		local r = chercher("protection", { [5] = { itemID = 9, ilvl = 26 } })
+		assert.same({ 1, 3 }, candidats(r, 5))
+		assert.equal("ilvl", groupe(r, 5).candidats[1].unite)
+		assert.same({ 1, 3 }, candidats(chercher("protection", porte, {}), 5)) -- le jeu n'a pas encore les objets en cache
 	end)
 
-	it("sans stats connues sur l'objet porté, le niveau d'objet décide", function()
-		local d = { recettes = { [1] = recette(5, 31, 20, 4, 1, { { 5, 10000 }, { 41, 1000 }, { 42, 9000 } }) } }
-		local equip = { [5] = { itemID = 9, ilvl = 30 } }
-		assert.same({ 1 }, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5))
-		local c = groupe(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5).candidats[1]
-		assert.is_number(c.utilite)
-		assert.equal(1, c.gain)
+	it("un emplacement vide a un score de 0, les candidats par score passent en premier", function()
+		assert.same({ 2, 1, 3 }, candidats(chercher("protection", {}), 5))
+	end)
+
+	it("les armes se comparent toujours par niveau d'objet", function()
+		local r = chercher("protection", { [16] = { itemID = 8, ilvl = 20, stats = { { 4, 900 } } } })
+		assert.same({ 4 }, candidats(r, 16)) -- 28 > 20 ; un score de stats aurait écarté l'arme (500 < 900)
+		assert.equal("ilvl", groupe(r, 16).candidats[1].unite)
+	end)
+
+	it("propose les spécialisations de la classe et pèse avec leurs poids", function()
+		assert.equal("arms", A.specs("WARRIOR")[1].cle)
+		assert.equal(1, A.specs("WARRIOR")[1].id) -- numéro de l'arbre de talents
+		assert.is_nil(A.specs("PALADIN")[4].id)    -- paladin choc : pas un arbre
+		assert.same({}, A.specs("INCONNUE"))
+		assert.equal(5, A.score({ { 7, 4 }, { 4, 2 } }, { [7] = 1, [4] = 0.5 }))
 	end)
 end)
 
