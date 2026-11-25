@@ -14,6 +14,9 @@
 --     objet = itemID, qte = 1, qualite = 0..7, lie = true,
 --       (lie : l'objet créé est lié quand équipé ; la clé est absente sinon)
 --       (enchantement : objet = 0, qte = 0, qualite = 0, aucun objet créé)
+--     equip = { emplacement = InventoryType, ilvl = niveau d'objet, requis = niveau requis,
+--               classe = ClassID, sous = SubclassID, stats = { { type, valeur }, ... } },
+--       (objet équipable seulement ; classe et sous sont absents si le client ne les a pas donnés)
 --     composants = { { itemID, qte }, ... },
 --   }
 local _, ns = ...

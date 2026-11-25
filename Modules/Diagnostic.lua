@@ -148,6 +148,11 @@ function Diagnostic:Lancer()
 	api("GameTooltip:HookScript", GameTooltip and GameTooltip.HookScript ~= nil)
 	api("ItemRefTooltip", _G.ItemRefTooltip ~= nil)
 	api("ShoppingTooltip1", _G.ShoppingTooltip1 ~= nil)
+	-- Chercheur d'améliorations : sans effet en 0.6, mais dit si le niveau 2 (stats de l'objet porté, suffixes compris) pourra
+	-- s'appuyer sur l'API ou devra lire les infobulles.
+	api("C_Item.GetItemStats", C_Item and C_Item.GetItemStats ~= nil)
+	api("C_Item.GetDetailedItemLevelInfo", C_Item and C_Item.GetDetailedItemLevelInfo ~= nil)
+	api("GetInventoryItemLink", _G.GetInventoryItemLink ~= nil)
 	api("C_Item.GetItemCount", C_Item and C_Item.GetItemCount ~= nil)
 	api("C_Item.GetItemNameByID", C_Item and C_Item.GetItemNameByID ~= nil)
 	api("IsShiftKeyDown / IsControlKeyDown", _G.IsShiftKeyDown ~= nil and _G.IsControlKeyDown ~= nil)

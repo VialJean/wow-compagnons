@@ -215,6 +215,7 @@ function Fenetre:Creer()
 	securise("liste des membres", self.CreerMembres, self, f)
 	securise("historique des commandes", self.CreerHistorique, self, f)
 	securise("petites annonces", self.CreerAnnonces, self, f)
+	securise("améliorations", self.CreerAmeliorations, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
 	securise("bandeau de version", function()
 		if ns.Avertissement then ns.Avertissement:AttacherBandeau(f) end
@@ -505,7 +506,7 @@ end
 
 function Fenetre:CreerOnglets(f)
 	self.onglets = {}
-	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES, L.ONGLET_HISTORIQUE, L.ONGLET_ANNONCES }
+	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES, L.ONGLET_HISTORIQUE, L.ONGLET_ANNONCES, L.ONGLET_AMELIORATIONS }
 	for i, nom in ipairs(noms) do
 		local onglet = CreateFrame("Button", "CompagnonsFrameTab" .. i, f, "PanelTabButtonTemplate")
 		onglet:SetID(i)
@@ -542,6 +543,7 @@ function Fenetre:ChoisirOnglet(numero)
 	if self.vueMembres then self.vueMembres:SetShown(numero == 3) end
 	if self.vueHistorique then self.vueHistorique:SetShown(numero == 4) end
 	if self.vueAnnonces then self.vueAnnonces:SetShown(numero == 5) end
+	if self.vueAmeliorations then self.vueAmeliorations:SetShown(numero == 6) end
 	if numero == 1 then
 		self:Rafraichir(true)
 	elseif numero == 2 then
@@ -550,8 +552,10 @@ function Fenetre:ChoisirOnglet(numero)
 		self:RafraichirMembres()
 	elseif numero == 4 then
 		self:RafraichirHistorique()
-	else
+	elseif numero == 5 then
 		self:RafraichirAnnonces()
+	else
+		self:RafraichirAmeliorations()
 	end
 end
 

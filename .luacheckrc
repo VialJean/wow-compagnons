@@ -42,6 +42,7 @@ read_globals = {
 	"GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxItem", "GetSendMailItem", "GetSendMailMoney", "ITEM_QUALITY_COLORS", "Enum", "TooltipDataProcessor", "ItemRefTooltip", "ShoppingTooltip1", "IsShiftKeyDown", "IsControlKeyDown",
 	"HandleModifiedItemClick", "ContainerFrameItemButton_OnModifiedClick", "hooksecurefunc",
 	"ButtonFrameTemplate_HidePortrait", "InCombatLockdown", "Settings",
+	"GetDetailedItemLevelInfo", "GetItemInfo", "GetInventoryItemLink", "UnitLevel",
 }
 
 files["tests/"] = { std = "+busted" }
