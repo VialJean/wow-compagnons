@@ -22,6 +22,7 @@ local defauts = {
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
 		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
 		prixObjets = {},  -- prix d'achat des objets fabricables, locaux (pas synchronisés) : [itemID] = { p, t, v }
+		favoris = {},     -- recettes favorites du compte, locales, jamais synchronisées : [spellID] = true
 		prix = {},        -- prix unitaires des composants à l'hôtel des ventes : [itemID] = { p, t }
 		versions = { pairs = {} }, -- pairs en retard de protocole : [clé] = { v, vu, brut, averti } ; plusRecente (Core/Versions.lua)
 		livraisonCumul = {}, -- remises en plusieurs fois : [idCommande] = { recu = { [itemID] = n }, donne = { [itemID] = n } }

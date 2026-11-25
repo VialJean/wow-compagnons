@@ -205,4 +205,38 @@ describe("Catalogue", function()
 		assert.are.equal(2, #membres[2].metiers == 1 and 2 or 0)      -- Jean : un métier (nos données, pas celles de la guilde)
 		assert.are.equal(2, membres[2].metiers[1].recettes)           -- 424242 n'est pas dans la base
 	end)
+
+	describe("favoris, composant et stock", function()
+		local function chercher(options)
+			local Cat = charger()
+			return Cat.nouveau(donnees, personnages, {}):Chercher(options)
+		end
+
+		it("ne garde que les favoris quand on le demande", function()
+			local liste = chercher({ soloFavoris = true, favoris = { [3000] = true } })
+			assert.same({ 3000 }, liste)
+			assert.same({}, (chercher({ soloFavoris = true, favoris = {} })))
+			assert.same({}, (chercher({ soloFavoris = true })))
+		end)
+
+		it("ne garde que les recettes qui utilisent le composant", function()
+			assert.same({ 2331, 2329 }, (function()
+				local l = chercher({ composant = 3371 })
+				table.sort(l, function(a, b) return a > b end)
+				return l
+			end)())
+			assert.same({ 3000 }, chercher({ composant = 2449, texte = "huile" }))
+		end)
+
+		it("ne garde que les recettes dont tous les composants sont en stock", function()
+			local stock = { [2449] = 1, [3371] = 1 }
+			local liste = chercher({ avecStock = true, stock = function(id) return stock[id] or 0 end })
+			table.sort(liste)
+			assert.same({ 2329, 2331 }, liste) -- 3000 veut 2 terrestrines ; 7418 veut une poussière
+			stock[2449] = 2
+			liste = chercher({ avecStock = true, stock = function(id) return stock[id] or 0 end })
+			table.sort(liste)
+			assert.same({ 2329, 2331, 3000 }, liste)
+		end)
+	end)
 end)

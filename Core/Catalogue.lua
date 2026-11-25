@@ -150,6 +150,10 @@ end
 --   estEnLigne   fonction(cle) -> booléen
 --   lieEquipe    vrai : l'objet fabriqué est lié quand équipé (`lie` dans Data/Recettes.lua, tiré du client) ; une recette
 --                sans objet (enchantement) est écartée
+--   favoris      table { [spellID] = true } : avec `soloFavoris`, ne garde que les recettes favorites
+--   composant    itemID : ne garde que les recettes qui utilisent ce composant
+--   stock        fonction(itemID) -> quantité possédée : avec `avecStock`, ne garde que les recettes dont tous les composants
+--                sont couverts (pour une fabrication)
 -- Renvoie la liste des spellIDs, du plus bas niveau au plus haut.
 function Catalogue:Chercher(options)
 	options = options or {}
@@ -189,6 +193,16 @@ function Catalogue:Chercher(options)
 		end
 
 		if garde and options.lieEquipe then garde = r.lie == true end
+		if garde and options.soloFavoris then garde = options.favoris ~= nil and options.favoris[spellID] == true end
+		if garde and options.composant then garde = self:QuantiteComposant(spellID, options.composant) > 0 end
+		if garde and options.avecStock and options.stock then
+			for _, comp in ipairs(r.composants or {}) do
+				if options.stock(comp[1]) < comp[2] then
+					garde = false
+					break
+				end
+			end
+		end
 
 		if garde then resultat[#resultat + 1] = spellID end
 	end
