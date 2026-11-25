@@ -13,6 +13,8 @@
 --   PROFILE_UPD  GUILD    { v, profil }            un personnage vient d'être scanné
 --   ORDER_NEW    GUILD    { v, commande }          une commande vient d'être créée
 --   ORDER_UPD    GUILD    { v, commande }          une commande vient de changer d'état
+--   ANNONCE      GUILD    { v, annonce }           une petite annonce vient d'être publiée, modifiée, reconduite ou retirée
+--   ANNONCE_SYNC WHISPER  { v, annonce }           une annonce transmise pendant une synchro (HASHES.liste.a, PROFILE_REQ.an)
 --
 -- Prix des composants (docs/livraison.md, §11), hors du hash global pour rester compatible avec les versions qui ne les
 -- connaissent pas : les champs `hp` et `x` et les genres PRIX et PRIX_UPD sont simplement ignorés par celles-ci.
@@ -27,15 +29,16 @@ local Synchro = {}
 Synchro.__index = Synchro
 ns.Synchro = Synchro
 
--- Version 3 : état « livrée » et confirmation de réception par le client (docs/protocole.md, « Historique »). Un message d'une
--- autre version est ignoré : les versions 2 (0.4.x) et 3 (0.5) ne se synchronisent plus entre elles.
-Synchro.PROTOCOLE = 3
+-- Version 4 : petites annonces, comprises dans le hash global (docs/protocole.md, « Historique »). Un message d'une autre version
+-- est ignoré : les versions 3 (0.5.x) et 4 (0.6) ne se synchronisent plus entre elles.
+Synchro.PROTOCOLE = 4
 
 local FENETRE_PARTENAIRE = 20 -- secondes pendant lesquelles on ne synchronise qu'avec un seul pair
 local DELAI_REPONSE = 2       -- les pairs répondent après un délai aléatoire borné par cette valeur
 local DELAI_REANNONCE = 5     -- regroupe plusieurs changements en une seule annonce
 local MAX_DEMANDES = 400
 local MAX_COMMANDES = 600     -- au-delà, les nouvelles commandes reçues sont ignorées
+local MAX_ANNONCES = 400      -- idem pour les petites annonces
 local PRIX_PAR_MESSAGE = 100  -- un lot de prix plus gros est coupé en plusieurs messages
 local DELAI_PRIX = 5          -- regroupe les prix relevés à l'hôtel des ventes avant de les diffuser
 
@@ -54,6 +57,7 @@ local DELAI_PRIX = 5          -- regroupe les prix relevés à l'hôtel des vent
 --   prix          table itemID -> { p, t } (prix unitaires des composants)
 --   surPrix       fonction(ids) appelée quand des prix sont modifiés depuis le réseau
 --   surCommande   fonction(id, avant, apres) appelée quand une commande change depuis le réseau
+--   surOubli      fonction(commande) appelée juste avant l'oubli d'une commande périmée (pour l'historique local)
 --   version       version de l'addon (texte), annoncée dans HELLO (champ `a`, informatif)
 --   surVersion    fonction(cle, v, brut, a) appelée pour tout message dont la version de protocole est lisible, **avant** qu'un
 --                 message d'une autre version soit ignoré : c'est ce qui permet de signaler un pair en retard (Core/Versions.lua)
@@ -63,6 +67,8 @@ function Synchro.nouveau(o)
 	s.donnees = o.donnees
 	s.profils = o.profils
 	s.commandes = o.commandes or {}
+	s.annonces = o.annonces or {}
+	s.surAnnonce = o.surAnnonce or function() end
 	s.prix = o.prix or {}
 	s.vus = o.vus or {} -- [cle] = dernier message reçu (heure) : qui a l'addon, même sans profil
 	s.surPrix = o.surPrix or function() end
@@ -77,6 +83,7 @@ function Synchro.nouveau(o)
 	s.normaliser = o.normaliser or function(brut) return (brut:gsub("%-", " ")) end
 	s.surMaj = o.surMaj or function() end
 	s.surCommande = o.surCommande or function() end
+	s.surOubli = o.surOubli or function() end
 	s.version = o.version
 	s.surVersion = o.surVersion or function() end
 	s.journal = o.journal or function() end
@@ -104,7 +111,7 @@ function Synchro:HashGlobal()
 		for i, cle in ipairs(cles) do morceaux[i] = cle .. ":" .. table_[cle].hash end
 		return table.concat(morceaux, ";")
 	end
-	return ns.Profil.adler(liste(self.profils) .. "|" .. liste(self.commandes))
+	return ns.Profil.adler(liste(self.profils) .. "|" .. liste(self.commandes) .. "|" .. liste(self.annonces))
 end
 
 --- Hash des prix : volontairement séparé du hash global.
@@ -118,6 +125,12 @@ function Synchro:Compter()
 	return n
 end
 
+function Synchro:CompterAnnonces()
+	local n = 0
+	for _ in pairs(self.annonces) do n = n + 1 end
+	return n
+end
+
 function Synchro:CompterCommandes()
 	local n = 0
 	for _ in pairs(self.commandes) do n = n + 1 end
@@ -128,7 +141,13 @@ end
 function Synchro:Nettoyer()
 	local maintenant = self.maintenant()
 	for id, c in pairs(self.commandes) do
-		if ns.Commandes.perimee(c, maintenant) then self.commandes[id] = nil end
+		if ns.Commandes.perimee(c, maintenant) then
+			self.surOubli(c)
+			self.commandes[id] = nil
+		end
+	end
+	for id, a in pairs(self.annonces) do
+		if ns.Annonces.perimee(a, maintenant) then self.annonces[id] = nil end
 	end
 end
 
@@ -205,6 +224,30 @@ function Synchro:CreerCommande(options)
 	return c
 end
 
+--- Publie une annonce de la part de `options.auteur`. Renvoie l'annonce, ou nil et une raison.
+function Synchro:CreerAnnonce(options)
+	options.maintenant = options.maintenant or self.maintenant()
+	if ns.Annonces.nombreActives(self.annonces, options.auteur, options.maintenant) >= ns.Annonces.MAX_PAR_AUTEUR then
+		return nil, "limite"
+	end
+	local a, raison = ns.Annonces.nouvelle(options)
+	if not a then return nil, raison end
+	self.annonces[a.id] = a
+	self:Envoyer("GUILD", nil, "ANNONCE", { v = Synchro.PROTOCOLE, annonce = a })
+	return a
+end
+
+--- Reconduit, modifie ou retire une annonce au nom de son auteur. Renvoie la nouvelle annonce, ou nil et une raison.
+function Synchro:AgirAnnonce(id, action, par, extra)
+	local actuelle = self.annonces[id]
+	if not actuelle then return nil, "inconnue" end
+	local nouvelle, raison = ns.Annonces.appliquer(actuelle, action, par, self.maintenant(), extra)
+	if not nouvelle then return nil, raison end
+	self.annonces[id] = nouvelle
+	self:Envoyer("GUILD", nil, "ANNONCE", { v = Synchro.PROTOCOLE, annonce = nouvelle })
+	return nouvelle
+end
+
 --- Fait avancer une commande (prendre, mats, terminer, liberer, annuler) au nom du personnage `par`.
 -- Renvoie la nouvelle commande, ou nil et la raison.
 function Synchro:AgirCommande(id, action, par, extra)
@@ -265,6 +308,32 @@ function Synchro:IntegrerCommande(brut)
 	return true
 end
 
+--- Intègre une annonce venue du réseau. `expediteur` : l'auteur supposé quand l'annonce est diffusée en direct (seul l'auteur
+-- écrit) ; nil pendant une synchro, où un pair relaie les annonces des autres. Renvoie vrai si notre copie a changé.
+function Synchro:IntegrerAnnonce(brut, expediteur)
+	local a = ns.Annonces.valider(brut)
+	if not a then
+		self.journal("warn", "annonce reçue invalide, ignorée")
+		return false
+	end
+	if expediteur and self.normaliser(expediteur) ~= a.auteur then return false end
+	local maintenant = self.maintenant()
+	if ns.Annonces.perimee(a, maintenant) then return false end
+	local actuelle = self.annonces[a.id]
+	if actuelle then
+		if not ns.Annonces.meilleure(a, actuelle) then return false end
+		if a.auteur ~= actuelle.auteur then return false end
+	else
+		if self:CompterAnnonces() >= MAX_ANNONCES then return false end
+		if not a.retire and ns.Annonces.nombreActives(self.annonces, a.auteur, maintenant) >= ns.Annonces.MAX_PAR_AUTEUR then
+			return false
+		end
+	end
+	self.annonces[a.id] = a
+	self.surAnnonce(a.id, actuelle, a)
+	return true
+end
+
 --- Intègre un lot de prix venu du réseau (validé, le plus récent gagne). Renvoie vrai s'il a modifié nos prix.
 function Synchro:IntegrerPrix(brut)
 	local valides = ns.Prix.valider(brut, self.donnees, self.maintenant())
@@ -277,7 +346,7 @@ end
 local GENRES = {
 	HELLO = true, PRET = true, HASHES = true, PROFILE_REQ = true,
 	PROFILE = true, PROFILE_UPD = true, ORDER = true, ORDER_NEW = true, ORDER_UPD = true,
-	PRIX = true, PRIX_UPD = true,
+	PRIX = true, PRIX_UPD = true, ANNONCE = true, ANNONCE_SYNC = true,
 }
 
 function Synchro:Recevoir(genre, charge, expediteur)
@@ -315,6 +384,10 @@ function Synchro:Recevoir(genre, charge, expediteur)
 		if self:IntegrerPrix(charge.prix) then self:ProgrammerAnnonce() end
 	elseif genre == "PRIX_UPD" then
 		self:IntegrerPrix(charge.prix)
+	elseif genre == "ANNONCE_SYNC" then
+		if self:IntegrerAnnonce(charge.annonce) then self:ProgrammerAnnonce() end
+	elseif genre == "ANNONCE" then
+		self:IntegrerAnnonce(charge.annonce, expediteur)
 	else -- ORDER_NEW, ORDER_UPD
 		self:IntegrerCommande(charge.commande)
 	end
@@ -352,11 +425,12 @@ function Synchro:SurPret(_, expediteur)
 	end
 	self.partenaire = expediteur
 	self.partenaireJusqua = maintenant + FENETRE_PARTENAIRE
-	local p, c = {}, {}
+	local p, c, an = {}, {}, {}
+	for id, a in pairs(self.annonces) do an[id] = { a.rev, a.maj, a.hash } end
 	for cle, profil in pairs(self.profils) do p[cle] = { profil.maj, profil.hash } end
 	for id, o in pairs(self.commandes) do c[id] = { o.rev, o.maj, o.par, o.hash } end
 	self:Envoyer("WHISPER", expediteur, "HASHES", {
-		v = Synchro.PROTOCOLE, liste = { p = p, c = c, x = ns.Prix.horodatages(self.prix) },
+		v = Synchro.PROTOCOLE, liste = { p = p, c = c, a = an, x = ns.Prix.horodatages(self.prix) },
 	})
 end
 
@@ -369,6 +443,7 @@ function Synchro:SurHashes(charge, expediteur)
 	if type(liste) ~= "table" then return end
 	local distantsP = type(liste.p) == "table" and liste.p or {}
 	local distantsC = type(liste.c) == "table" and liste.c or {}
+	local distantsA = type(liste.a) == "table" and liste.a or {}
 
 	local demandeP, demandeC = {}, {}
 	for cle, info in pairs(distantsP) do
@@ -386,6 +461,15 @@ function Synchro:SurHashes(charge, expediteur)
 			local distant = { rev = info[1], maj = info[2], par = info[3], hash = info[4] }
 			if not local_ or ns.Commandes.meilleure(distant, local_) then
 				if #demandeC < MAX_DEMANDES then demandeC[#demandeC + 1] = id end
+			end
+		end
+	end
+	local demandeA = {}
+	for id, info in pairs(distantsA) do
+		if type(id) == "string" and type(info) == "table" and nombre(info[1]) and nombre(info[2]) and nombre(info[3]) then
+			local local_ = self.annonces[id]
+			if not local_ or ns.Annonces.meilleure({ rev = info[1], maj = info[2], hash = info[3] }, local_) then
+				if #demandeA < MAX_DEMANDES then demandeA[#demandeA + 1] = id end
 			end
 		end
 	end
@@ -407,9 +491,9 @@ function Synchro:SurHashes(charge, expediteur)
 		if next(pousser) then self:EnvoyerPrix("WHISPER", expediteur, "PRIX", pousser) end
 	end
 
-	if #demandeP > 0 or #demandeC > 0 or #demandeX > 0 then
+	if #demandeP > 0 or #demandeC > 0 or #demandeA > 0 or #demandeX > 0 then
 		self:Envoyer("WHISPER", expediteur, "PROFILE_REQ", {
-			v = Synchro.PROTOCOLE, cles = demandeP, ids = demandeC, px = demandeX,
+			v = Synchro.PROTOCOLE, cles = demandeP, ids = demandeC, an = demandeA, px = demandeX,
 		})
 	end
 
@@ -430,6 +514,14 @@ function Synchro:SurHashes(charge, expediteur)
 		end
 		if pousser then self:Envoyer("WHISPER", expediteur, "ORDER", { v = Synchro.PROTOCOLE, commande = c }) end
 	end
+	for id, a in pairs(self.annonces) do
+		local info = distantsA[id]
+		local pousser = info == nil
+		if not pousser and type(info) == "table" and nombre(info[1]) and nombre(info[2]) and nombre(info[3]) then
+			pousser = ns.Annonces.meilleure(a, { rev = info[1], maj = info[2], hash = info[3] })
+		end
+		if pousser then self:Envoyer("WHISPER", expediteur, "ANNONCE_SYNC", { v = Synchro.PROTOCOLE, annonce = a }) end
+	end
 end
 
 function Synchro:SurDemande(charge, expediteur)
@@ -445,6 +537,13 @@ function Synchro:SurDemande(charge, expediteur)
 			if i > MAX_DEMANDES then break end
 			local c = type(id) == "string" and self.commandes[id]
 			if c then self:Envoyer("WHISPER", expediteur, "ORDER", { v = Synchro.PROTOCOLE, commande = c }) end
+		end
+	end
+	if type(charge.an) == "table" then
+		for i, id in ipairs(charge.an) do
+			if i > MAX_DEMANDES then break end
+			local a = type(id) == "string" and self.annonces[id]
+			if a then self:Envoyer("WHISPER", expediteur, "ANNONCE_SYNC", { v = Synchro.PROTOCOLE, annonce = a }) end
 		end
 	end
 	if type(charge.px) == "table" then

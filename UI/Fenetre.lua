@@ -150,7 +150,8 @@ local function creerCadre(parent)
 end
 
 function Fenetre:OnEnable()
-	self.filtres = { craftable = false, enLigne = false, inconnue = false, lieEquipe = false }
+	self.filtres = { craftable = false, enLigne = false, inconnue = false, lieEquipe = false, favoris = false, avecStock = false }
+	self.composant = nil -- itemID : ne garder que les recettes qui utilisent ce composant
 	self.texte = ""
 	self.metier = nil
 	self.onglet = 1
@@ -160,7 +161,7 @@ end
 
 function Fenetre:SurMiseAJour()
 	if self.cadre and self.cadre:IsShown() then
-		self:Rafraichir()
+		self:Rafraichir(true)
 		self:RafraichirMembres()
 	end
 end
@@ -212,6 +213,9 @@ function Fenetre:Creer()
 	securise("liste des recettes", self.CreerRecettes, self, f)
 	securise("tableau des commandes", self.CreerCommandes, self, f)
 	securise("liste des membres", self.CreerMembres, self, f)
+	securise("historique des commandes", self.CreerHistorique, self, f)
+	securise("petites annonces", self.CreerAnnonces, self, f)
+	securise("améliorations", self.CreerAmeliorations, self, f)
 	securise("onglets", self.CreerOnglets, self, f)
 	securise("bandeau de version", function()
 		if ns.Avertissement then ns.Avertissement:AttacherBandeau(f) end
@@ -220,7 +224,7 @@ function Fenetre:Creer()
 	f.pied = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.pied:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 8)
 
-	f:SetScript("OnShow", function() self:Rafraichir() end)
+	f:SetScript("OnShow", function() self:Rafraichir(true) end)
 	return true
 end
 
@@ -254,12 +258,24 @@ function Fenetre:CreerRecherche(f)
 			option(L.FILTRE_EN_LIGNE, "enLigne")
 			option(L.FILTRE_INCONNUE, "inconnue")
 			option(L.FILTRE_LIE_EQUIPE, "lieEquipe")
+			option(L.FILTRE_FAVORIS, "favoris")
+			option(L.FILTRE_AVEC_STOCK, "avecStock")
 		end)
 	end
 	self.filtre = filtre
 
 	f.nbResultats = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	f.nbResultats:SetPoint("LEFT", filtre, "RIGHT", 12, 0)
+
+	-- Filtre « composant » : posé par un clic sur un composant du détail, retiré par un clic sur cette puce.
+	f.puce = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	f.puce:SetSize(190, 20)
+	f.puce:SetPoint("TOPLEFT", f, "TOPLEFT", 78, -12)
+	f.puce:SetScript("OnClick", function()
+		self.composant = nil
+		self:Rafraichir()
+	end)
+	f.puce:Hide()
 end
 
 function Fenetre:CreerMetiers(f)
@@ -319,13 +335,16 @@ function Fenetre:CreerRecettes(f)
 			ligne.icone:SetPoint("LEFT", 6, 0)
 			ligne.nom = ligne:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 			ligne.nom:SetPoint("TOPLEFT", ligne.icone, "TOPRIGHT", 8, -2)
-			ligne.nom:SetPoint("RIGHT", ligne, "RIGHT", -110, 0)
+			ligne.nom:SetPoint("RIGHT", ligne, "RIGHT", -130, 0)
 			ligne.nom:SetJustifyH("LEFT")
+			ligne.etoile = Fenetre:CreerEtoile(ligne, 16)
+			ligne.etoile:SetPoint("RIGHT", -6, 0)
+			ligne.etoile:SetScript("OnClick", function(b) Fenetre:BasculerFavori(b:GetParent().spellID) end)
 			ligne.detail = ligne:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 			ligne.detail:SetPoint("BOTTOMLEFT", ligne.icone, "BOTTOMRIGHT", 8, 2)
 			ligne.detail:SetJustifyH("LEFT")
 			ligne.qui = ligne:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-			ligne.qui:SetPoint("RIGHT", -8, 0)
+			ligne.qui:SetPoint("RIGHT", -28, 0)
 			ligne.qui:SetJustifyH("RIGHT")
 			ligne.survol = ligne:CreateTexture(nil, "HIGHLIGHT")
 			ligne.survol:SetAllPoints()
@@ -342,6 +361,7 @@ function Fenetre:CreerRecettes(f)
 			end)
 			function ligne:Actualiser()
 				self.selection:SetShown(self.spellID == Fenetre.selection)
+				Fenetre:ActualiserEtoile(self.etoile, self.spellID)
 			end
 		end
 		local recette = ns.Recettes.recettes[spellID]
@@ -395,8 +415,11 @@ function Fenetre:CreerDetail(f)
 	d.icone:SetPoint("TOPLEFT", 12, -12)
 	d.nom = cadre:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	d.nom:SetPoint("TOPLEFT", d.icone, "TOPRIGHT", 10, -2)
-	d.nom:SetPoint("RIGHT", cadre, "RIGHT", -10, 0)
+	d.nom:SetPoint("RIGHT", cadre, "RIGHT", -34, 0)
 	d.nom:SetJustifyH("LEFT")
+	d.etoile = self:CreerEtoile(cadre, 18)
+	d.etoile:SetPoint("TOPRIGHT", cadre, "TOPRIGHT", -10, -14)
+	d.etoile:SetScript("OnClick", function() self:BasculerFavori(self.selection) end)
 	d.sous = cadre:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	d.sous:SetPoint("TOPLEFT", d.nom, "BOTTOMLEFT", 0, -4)
 	d.sous:SetJustifyH("LEFT")
@@ -428,6 +451,13 @@ function Fenetre:CreerDetail(f)
 		ligne:SetScript("OnLeave", function()
 			if GameTooltip then GameTooltip:Hide() end
 		end)
+		-- Un clic sur un composant filtre la liste sur les recettes qui l'utilisent.
+		ligne:SetScript("OnClick", function(bouton)
+			if bouton.itemID then
+				self.composant = bouton.itemID
+				self:Rafraichir()
+			end
+		end)
 		ligne:Hide()
 		d.composants[i] = ligne
 	end
@@ -457,18 +487,26 @@ function Fenetre:CreerDetail(f)
 	d.aucunCrafteur:SetText(L.PERSONNE_CONNAIT)
 
 	d.commander = CreateFrame("Button", nil, cadre, "UIPanelButtonTemplate")
-	d.commander:SetSize(LARGEUR_DETAIL - 28, 26)
-	d.commander:SetPoint("BOTTOM", cadre, "BOTTOM", 0, 12)
+	d.commander:SetSize((LARGEUR_DETAIL - 28) / 2 - 3, 26)
+	d.commander:SetPoint("BOTTOMLEFT", cadre, "BOTTOMLEFT", 14, 12)
 	d.commander:SetText(L.COMMANDER)
 	d.commander:SetScript("OnClick", function()
 		if self.selection then ns.Dialogue:Ouvrir(self.selection) end
 	end)
 	self.boutonCommander = d.commander
+
+	d.arbre = CreateFrame("Button", nil, cadre, "UIPanelButtonTemplate")
+	d.arbre:SetSize((LARGEUR_DETAIL - 28) / 2 - 3, 26)
+	d.arbre:SetPoint("BOTTOMRIGHT", cadre, "BOTTOMRIGHT", -14, 12)
+	d.arbre:SetText(L.ARBRE_BOUTON)
+	d.arbre:SetScript("OnClick", function()
+		if self.selection and ns.ArbreCraftUI then ns.ArbreCraftUI:Ouvrir(self.selection) end
+	end)
 end
 
 function Fenetre:CreerOnglets(f)
 	self.onglets = {}
-	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES }
+	local noms = { L.ONGLET_RECETTES, L.ONGLET_COMMANDES, L.ONGLET_MEMBRES, L.ONGLET_HISTORIQUE, L.ONGLET_ANNONCES, L.ONGLET_AMELIORATIONS }
 	for i, nom in ipairs(noms) do
 		local onglet = CreateFrame("Button", "CompagnonsFrameTab" .. i, f, "PanelTabButtonTemplate")
 		onglet:SetID(i)
@@ -500,14 +538,24 @@ function Fenetre:ChoisirOnglet(numero)
 		region:SetShown(recettes)
 	end
 	self.cadre.nbResultats:SetShown(recettes)
+	if not recettes then self.cadre.puce:Hide() end
 	if self.vueCommandes then self.vueCommandes:SetShown(numero == 2) end
 	if self.vueMembres then self.vueMembres:SetShown(numero == 3) end
+	if self.vueHistorique then self.vueHistorique:SetShown(numero == 4) end
+	if self.vueAnnonces then self.vueAnnonces:SetShown(numero == 5) end
+	if self.vueAmeliorations then self.vueAmeliorations:SetShown(numero == 6) end
 	if numero == 1 then
-		self:Rafraichir()
+		self:Rafraichir(true)
 	elseif numero == 2 then
 		self:RafraichirCommandes()
-	else
+	elseif numero == 3 then
 		self:RafraichirMembres()
+	elseif numero == 4 then
+		self:RafraichirHistorique()
+	elseif numero == 5 then
+		self:RafraichirAnnonces()
+	else
+		self:RafraichirAmeliorations()
 	end
 end
 
@@ -538,11 +586,19 @@ function Fenetre:Options(sansMetier)
 		enLigne = self.filtres.enLigne,
 		inconnue = self.filtres.inconnue,
 		lieEquipe = self.filtres.lieEquipe,
+		soloFavoris = self.filtres.favoris,
+		favoris = ns.db.global.favoris,
+		composant = self.composant,
+		avecStock = self.filtres.avecStock,
+		stock = nombreEnStock,
 		estEnLigne = ns.estEnLigne,
 	}
 end
 
-function Fenetre:Rafraichir()
+--- Remplit les listes et le détail d'après les filtres. `garder` : les données ont changé mais pas la recherche
+-- (synchro, scan, passage en ligne d'un membre, réouverture) ; la liste des recettes garde alors sa position de défilement
+-- au lieu de remonter en haut. Une recherche, un filtre ou un métier différents repartent du haut.
+function Fenetre:Rafraichir(garder)
 	if not self.cadre or not self.cadre:IsShown() or self.onglet ~= 1 then return end
 	local catalogue = ns.catalogue
 	if not catalogue then return end
@@ -564,7 +620,15 @@ function Fenetre:Rafraichir()
 	rafraichirLignes(self.listeMetiers)
 
 	local liste = catalogue:Chercher(self:Options())
-	remplir(self.listeRecettes, liste, false)
+	if self.composant then
+		local nom = ns.Recettes.objets and ns.Recettes.objets[self.composant] and ns.Recettes.objets[self.composant][1] or ""
+		if nom == "" then nom = "#" .. self.composant end
+		self.cadre.puce:SetText(string.format(L.FILTRE_COMPOSANT, nom))
+		self.cadre.puce:Show()
+	else
+		self.cadre.puce:Hide()
+	end
+	remplir(self.listeRecettes, liste, garder)
 	self.cadreRecettes.vide:SetShown(#liste == 0)
 	self.cadre.nbResultats:SetText(string.format(L.RESULTATS, #liste))
 
@@ -585,6 +649,44 @@ function Fenetre:Rafraichir()
 	self:ActualiserLibelleOnglets()
 end
 
+-- Favoris : stockés au niveau du compte (`global.favoris`), locaux, jamais synchronisés.
+-- Le repère est un voyant jaune (favori) ou gris (sinon), textures fournies avec le jeu.
+function Fenetre:CreerEtoile(parent, taille)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(taille, taille)
+	b.icone = b:CreateTexture(nil, "ARTWORK")
+	b.icone:SetAllPoints()
+	b:SetScript("OnEnter", function(bouton)
+		if GameTooltip then
+			GameTooltip:SetOwner(bouton, "ANCHOR_RIGHT")
+			GameTooltip:SetText(bouton.favori and L.FAVORI_RETIRER or L.FAVORI_AJOUTER, 1, 1, 1)
+			GameTooltip:Show()
+		end
+	end)
+	b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+	return b
+end
+
+function Fenetre:ActualiserEtoile(etoile, spellID)
+	if not etoile then return end
+	local favori = spellID ~= nil and ns.db.global.favoris[spellID] == true
+	etoile.favori = favori
+	etoile.icone:SetTexture(favori and "Interface\\COMMON\\Indicator-Yellow" or "Interface\\COMMON\\Indicator-Gray")
+	etoile.icone:SetAlpha(favori and 1 or 0.6)
+end
+
+function Fenetre:BasculerFavori(spellID)
+	if not spellID then return end
+	local favoris = ns.db.global.favoris
+	if favoris[spellID] then favoris[spellID] = nil else favoris[spellID] = true end
+	if self.filtres.favoris then
+		self:Rafraichir(true) -- la liste change : on garde la position
+	else
+		rafraichirLignes(self.listeRecettes)
+		self:ActualiserDetail()
+	end
+end
+
 function Fenetre:Selectionner(spellID)
 	self.selection = spellID
 	rafraichirLignes(self.listeRecettes)
@@ -599,6 +701,7 @@ function Fenetre:ActualiserDetail()
 		d.nom:SetText("")
 		d.sous:SetText("")
 		d.icone:SetTexture(nil)
+		d.etoile:Hide()
 		for i = 1, MAX_LIGNES do
 			d.composants[i]:Hide()
 			d.crafteurs[i]:Hide()
@@ -607,6 +710,8 @@ function Fenetre:ActualiserDetail()
 		return
 	end
 
+	self:ActualiserEtoile(d.etoile, spellID)
+	d.etoile:Show()
 	d.icone:SetTexture(iconeRecette(spellID, recette))
 	d.nom:SetText(recette.nom)
 	d.nom:SetTextColor(couleurQualite(recette.qualite))

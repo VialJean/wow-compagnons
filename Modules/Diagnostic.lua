@@ -20,7 +20,7 @@ local TEMPLATES = {
 	"WowScrollBoxList", "MinimalScrollBar", "SearchBoxTemplate",
 	"WowStyle1DropdownTemplate", "WowStyle1FilterDropdownTemplate",
 	"UICheckButtonTemplate", "UIRadioButtonTemplate", "NumericInputSpinnerTemplate",
-	"ScrollingEditBoxTemplate", "ItemButtonTemplate",
+	"ScrollingEditBoxTemplate",
 }
 
 local rapport
@@ -148,16 +148,20 @@ function Diagnostic:Lancer()
 	api("GameTooltip:HookScript", GameTooltip and GameTooltip.HookScript ~= nil)
 	api("ItemRefTooltip", _G.ItemRefTooltip ~= nil)
 	api("ShoppingTooltip1", _G.ShoppingTooltip1 ~= nil)
+	-- Chercheur d'améliorations : sans effet en 0.6, mais dit si le niveau 2 (stats de l'objet porté, suffixes compris) pourra
+	-- s'appuyer sur l'API ou devra lire les infobulles.
+	api("C_Item.GetItemStats", C_Item and C_Item.GetItemStats ~= nil)
+	api("GetNumTalentTabs / GetTalentTabInfo (spécialisation)", _G.GetNumTalentTabs ~= nil and _G.GetTalentTabInfo ~= nil)
+	api("C_Item.GetDetailedItemLevelInfo", C_Item and C_Item.GetDetailedItemLevelInfo ~= nil)
+	api("GetInventoryItemLink", _G.GetInventoryItemLink ~= nil)
 	api("C_Item.GetItemCount", C_Item and C_Item.GetItemCount ~= nil)
 	api("C_Item.GetItemNameByID", C_Item and C_Item.GetItemNameByID ~= nil)
 	api("IsShiftKeyDown / IsControlKeyDown", _G.IsShiftKeyDown ~= nil and _G.IsControlKeyDown ~= nil)
 	api("HandleModifiedItemClick", _G.HandleModifiedItemClick ~= nil)
-	api("ContainerFrameItemButton_OnModifiedClick", _G.ContainerFrameItemButton_OnModifiedClick ~= nil)
 	api("hooksecurefunc", _G.hooksecurefunc ~= nil)
 	-- Désenchantement (docs/desenchantement.md) : informations d'objet lisibles à l'exécution ?
 	api("C_Item.GetItemInfo", C_Item and C_Item.GetItemInfo ~= nil)
 	api("C_Item.GetDetailedItemLevelInfo", C_Item and C_Item.GetDetailedItemLevelInfo ~= nil)
-	api("GetItemInfo (global)", _G.GetItemInfo ~= nil)
 	do
 		-- Épée usée (25) : arme, qualité 1 ; elle donne la forme des valeurs renvoyées.
 		local fn = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
@@ -170,6 +174,22 @@ function Diagnostic:Lancer()
 				local t = r[2]
 				ligne(INFO, L.DIAG_ITEMINFO_TABLE,
 					tostring(t.classID), tostring(t.subclassID), tostring(t.quality), tostring(t.itemLevel))
+			end
+		end
+	end
+	-- Stats des objets portés, telles que le jeu les donne : dit si le critique, le toucher… sont en points ou en pourcentages
+	-- (les poids de Core/Poids.lua supposent des points de score).
+	if C_Item and C_Item.GetItemStats then
+		for emplacement = 1, 19 do
+			local lien = GetInventoryItemLink("player", emplacement)
+			local stats = lien and C_Item.GetItemStats(lien)
+			if type(stats) == "table" then
+				local morceaux = {}
+				for cle, valeur in pairs(stats) do
+					morceaux[#morceaux + 1] = (cle:gsub("^ITEM_MOD_", ""):gsub("_SHORT$", "")) .. "=" .. tostring(valeur)
+				end
+				table.sort(morceaux)
+				ligne(INFO, L.DIAG_STATS, emplacement, table.concat(morceaux, ", "))
 			end
 		end
 	end

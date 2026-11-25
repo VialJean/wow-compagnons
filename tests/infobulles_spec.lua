@@ -4,7 +4,7 @@ local function charger()
 	-- Les assertions de ce fichier portent sur le texte français : on simule un client en frFR.
 	rawset(_G, "GetLocale", function() return "frFR" end)
 	for _, fichier in ipairs({ "Locales/enUS.lua", "Locales/frFR.lua", "Core/Locales.lua", "Core/Bitset.lua",
-		"Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Desenchanter.lua",
+		"Core/Catalogue.lua", "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Desenchanter.lua",
 		"Data/Desenchantement.lua", "Core/Infobulles.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end

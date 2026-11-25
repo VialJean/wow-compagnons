@@ -1,5 +1,6 @@
 -- Tests hors jeu du modèle des commandes (Core/Commandes.lua) : cycle de vie, droits, validation réseau. busted tests
 local ns = { Profil = { adler = function(s) return #s end } }
+assert(loadfile("Core/Pourboire.lua"))("Compagnons", ns)
 assert(loadfile("Core/Commandes.lua"))("Compagnons", ns)
 local Commandes = ns.Commandes
 

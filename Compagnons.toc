@@ -27,10 +27,16 @@ Core\Livraison.lua
 Core\Assistance.lua
 Core\Stock.lua
 Core\Prix.lua
+Core\Pourboire.lua
+Core\ArbreCraft.lua
 Core\Noms.lua
 Core\Catalogue.lua
 Core\Profil.lua
 Core\Commandes.lua
+Core\Historique.lua
+Core\Annonces.lua
+Core\Poids.lua
+Core\Ameliorations.lua
 Core\Desenchanter.lua
 Core\Infobulles.lua
 Core\Synchro.lua
@@ -55,12 +61,20 @@ Modules\Courriers.lua
 Modules\Stocks.lua
 Modules\Marche.lua
 Modules\Rappels.lua
+Modules\Historique.lua
+Modules\Annonces.lua
+Modules\Ameliorations.lua
 
 UI\Fenetre.lua
 UI\OngletCommandes.lua
 UI\OngletMembres.lua
+UI\OngletHistorique.lua
+UI\OngletAnnonces.lua
+UI\OngletAmeliorations.lua
 UI\DialogueCommande.lua
 UI\Courses.lua
+UI\Options.lua
+UI\ArbreCraft.lua
 UI\PanneauMetier.lua
 UI\Infobulles.lua
 UI\Alertes.lua

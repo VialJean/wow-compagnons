@@ -12,7 +12,7 @@ local function charger(courant, personnages)
 	ns.clePersonnage = function() return courant end
 	ns.db = { global = { personnages = personnages, commandes = {}, guilde = {} } }
 
-	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Commandes.lua", "Core/Synchro.lua" }) do
+	for _, fichier in ipairs({ "Core/Bitset.lua", "Core/Catalogue.lua", "Core/Profil.lua", "Core/Pourboire.lua", "Core/Commandes.lua", "Core/Synchro.lua" }) do
 		assert(loadfile(fichier))("Compagnons", ns)
 	end
 

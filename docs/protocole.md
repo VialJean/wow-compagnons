@@ -1,7 +1,7 @@
-# Protocole Compagnons — version 3
+# Protocole Compagnons — version 4
 
-Ce document fait foi pour le format des SavedVariables et des messages addon. Il décrit le **protocole de synchro, version 3**
-(0.5) ; le **format des SavedVariables** a sa propre version, `schema` (1). L'historique des versions est en fin de document.
+Ce document fait foi pour le format des SavedVariables et des messages addon. Il décrit le **protocole de synchro, version 4**
+(0.6) ; le **format des SavedVariables** a sa propre version, `schema` (1). L'historique des versions est en fin de document.
 Le parseur du Relais (dépôt `wow-compagnons-services`) vérifie `schema` et refuse un format inconnu.
 
 ## SavedVariables
@@ -27,6 +27,14 @@ CompagnonsDB = {
     },
     guilde = {},      -- copie synchronisée : sprint synchro
     commandes = {},   -- sprint commandes
+    annonces = {},    -- 0.6 : petites annonces de la guilde, synchronisées : [id] = annonce (voir « Petites annonces »)
+    historique = {    -- 0.6 : commandes terminées ou annulées vues par cette copie, locales, jamais synchronisées
+      { id = "Prénom Nom#1731180062#1", spell = 2329, qte = 5, client = "Prénom Nom", crafteur = "Prénom Nom",
+        cree = 1731180062, fin = 1731200000, issue = "terminee", pourboire = 25000 },
+      -- issue : terminee | annulee | sansconfirmation (livrée, jamais confirmée, oubliée après 7 jours)
+      -- 500 entrées ou 180 jours au plus ; purge au chargement
+    },
+    favoris = { [2329] = true },  -- 0.6 : recettes favorites du compte, locales, jamais synchronisées
     diag = { sessions = 12, premiere = ..., derniere = ..., rapport = { ... } },
   },
   profiles = { ... },  -- réglages AceDB
@@ -52,7 +60,7 @@ met le royaume : `UnitName("player")` donne `"Jean", "Vialjean"`, et `GetUnitNam
 Préfixe `COMPAGNONS`. Charge utile : `LibSerialize` → `LibDeflate:CompressDeflate` → `LibDeflate:EncodeForWoWAddonChannel`.
 Les notes saisies par les joueurs passent en texte clair via `SendAddonMessageLogged`.
 
-Chaque message est `{ genre, charge }` avant codage ; `charge.v` porte la version du protocole (actuellement **3**),
+Chaque message est `{ genre, charge }` avant codage ; `charge.v` porte la version du protocole (actuellement **4**),
 un message d'une autre version est ignoré (journalisé, jamais intégré, jamais répondu).
 
 **Invariant : ne jamais changer l'enveloppe.** `{ genre, charge }`, `charge.v` numérique, et le codage `LibSerialize` →
@@ -72,6 +80,8 @@ de lire le `v` d'un pair plus récent ou plus ancien et de le signaler au joueur
 | `ORDER_UPD` | GUILD | `{ v, commande }` | une commande vient de changer d'état |
 | `PRIX` | WHISPER | `{ v, prix = { [itemID] = { p, t } } }` | prix transmis pendant une synchro (100 au plus par message) |
 | `PRIX_UPD` | GUILD | `{ v, prix }` | prix qui viennent d'être relevés à l'hôtel des ventes, regroupés sur 5 s |
+| `ANNONCE` | GUILD | `{ v, annonce }` | une petite annonce vient d'être publiée, modifiée, reconduite ou retirée (seul l'auteur écrit) |
+| `ANNONCE_SYNC` | WHISPER | `{ v, annonce }` | une annonce transmise pendant une synchro (provoque une nouvelle annonce `HELLO`, comme `ORDER`) |
 
 ### Prix (compatible v2)
 
@@ -106,6 +116,7 @@ Une commande est un instantané complet, avec un numéro de révision `rev` (une
   crafteur = nil,            -- crafteur désigné, ou nil : ouvert à tous
   mats = "partie",           -- "tout" | "partie" | "crafteur" : qui fournit les composants
   note = "",                 -- 120 caractères au plus
+  pourboire = nil,           -- promesse du client au crafteur, en cuivre (1 à 1 000 000 000), absent si nul
   statut = "ouverte",        -- ouverte | prise | mats | livree | terminee | annulee
   assigne = nil,             -- crafteur qui a pris la commande
   rev = 0, cree = 1731180062, maj = 1731180062, par = "Prénom Nom",
@@ -127,6 +138,33 @@ livraison (retour à `ouverte`), le client peut **annuler** tant que la commande
 | libérer | prise, mats | le crafteur assigné |
 | annuler | ouverte, prise, mats, livree | le client |
 | progres | prise, mats | le crafteur assigné (nombre fabriqué, vers le haut seulement) |
+
+### Pourboire
+
+Une commande peut porter `pourboire`, un montant en cuivre que le client promet au crafteur. Il est **hors du
+hash** de la commande : une version qui ne le connaît pas l'ignore sans se croire désynchronisée. Il est fixé à la création et ne change plus (pour le modifier, le client annule et republie). À la réception,
+un montant qui n'est pas un nombre entier de cuivre entre 0 et 1 000 000 000 est ignoré (la commande reste valide, sans
+pourboire). L'addon ne verse jamais rien : c'est une mention affichée, que le client remet lui-même (échange ou courrier).
+
+### Petites annonces (protocole 4)
+
+Une annonce est un message permanent de la guilde, en texte libre (« cherche un enchanteur pour mes bottes »).
+
+```lua
+{ id = "Prénom Nom#1731180062#1", auteur = "Prénom Nom",
+  texte = "",            -- obligatoire, 200 caractères au plus, en clair
+  rev = 0, maj = 1731180062,   -- révision (une par modification) et dernière reconduction
+  retire = nil }         -- true : annonce retirée (la pierre tombale se propage avant d'être oubliée)
+```
+
+- **Seul l'auteur écrit.** L'identifiant commence par `auteur#`, un `ANNONCE` diffusé en direct n'est accepté que de son auteur,
+  et une copie qui change l'auteur est refusée. **La révision la plus haute gagne**, puis la
+  reconduction la plus récente (`maj`), puis le hash.
+- **Limites** : 5 annonces actives par auteur, 400 annonces gardées. Une annonce expire **30 jours** après sa dernière
+  reconduction (l'auteur reconduit les siennes à chaque connexion, ce qui compte une révision) ; une annonce retirée est
+  oubliée après 7 jours. Les annonces d'un auteur absent de la liste de guilde sont purgées localement à la connexion.
+- **Synchro** : le hash global (`HELLO`) comprend les annonces ; `HASHES.liste.a` = `{ [id] = { rev, maj, hash } }` ;
+  `PROFILE_REQ.an` = ids demandés ; l'échange différentiel se fait par `ANNONCE_SYNC`.
 
 ### Règles
 
@@ -156,6 +194,7 @@ commandes aléatoires, latence, messages forgés) : tous les clients convergent 
 | 1 | 0.1 | profils de personnages, `HELLO` / `PRET` / `HASHES` / `PROFILE*` |
 | 2 | 0.2 à 0.4 | commandes (`ORDER*`), format de `HASHES` et `PROFILE_REQ` ; prix (`PRIX*`, `hp`, `x`) et progression des fabrications ajoutés **sans** changer de version (champs facultatifs ignorés par les anciennes) |
 | 3 | 0.5 | état `livree`, actions `livrer`, `confirmer`, `contester` (remplacent `terminer`) ; le client écrit désormais des transitions |
+| 4 | 0.6 | petites annonces (`ANNONCE`, `ANNONCE_SYNC`, `HASHES.liste.a`, `PROFILE_REQ.an`, annonces dans le hash global) ; `pourboire` facultatif sur les commandes (hors hash) |
 
 **Pourquoi une rupture en 3.** Un état inconnu fait rejeter la commande par une version 2, et une confirmation écrite par le client
 (auteur différent du crafteur) échouerait à sa validation, avec des demandes répétées à chaque synchro. Il n'y a donc pas de
@@ -163,3 +202,8 @@ passerelle : les 0.4.x et la 0.5 ne se synchronisent plus entre elles, et la 0.5
 
 **Données déjà enregistrées.** Une commande `terminee` d'avant la 0.5 reste `terminee` (sans attente de confirmation), et reste
 valide avec son crafteur comme auteur. Le format des SavedVariables ne change pas : `schema` reste 1.
+
+**Pourquoi une rupture en 4.** Le hash global comprend maintenant les annonces : une version 3 et une version 4 ne s'accorderaient
+jamais sur un même état et se relanceraient à chaque annonce. Il n'y a donc pas de passerelle : la 0.5.x et la 0.6 ne se
+synchronisent plus entre elles, et la 0.6 est une mise à jour obligatoire (l'avertissement de version existant le signale).
+Le format des SavedVariables reste `schema` 1 : les nouveaux champs (`annonces`, `historique`, `favoris`) sont facultatifs.

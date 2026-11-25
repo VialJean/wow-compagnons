@@ -58,6 +58,8 @@ function Reseau:OnEnable()
 		donnees = ns.Recettes,
 		profils = ns.db.global.guilde,
 		commandes = ns.db.global.commandes,
+		annonces = ns.db.global.annonces,
+		surAnnonce = function() Compagnons:SendMessage("COMPAGNONS_ANNONCES_MAJ") end,
 		prix = ns.db.global.prix,
 		vus = ns.db.global.vus,
 		surPrix = function() Compagnons:SendMessage("COMPAGNONS_PRIX_MAJ") end,
@@ -73,6 +75,7 @@ function Reseau:OnEnable()
 		surCommande = function(id, avant, apres)
 			Compagnons:SendMessage("COMPAGNONS_COMMANDE_RECUE", id, avant, apres)
 		end,
+		surOubli = function(c) ns.Historique.archiver(ns.db.global.historique, c, true) end,
 		journal = function(niveau, fmt, ...) ns.log(niveau, "sync", fmt, ...) end,
 	})
 
@@ -214,11 +217,16 @@ function Reseau:DemanderRoster()
 end
 
 function Reseau:SurRoster()
-	local nouveaux = {}
+	local nouveaux, tous, nb = {}, {}, 0
 	for i = 1, (GetNumGuildMembers() or 0) do
 		local nom, _, _, _, _, _, _, _, connecte = GetGuildRosterInfo(i)
-		if nom and connecte then nouveaux[nom] = true end
+		if nom then
+			tous[nom] = true
+			nb = nb + 1
+			if connecte then nouveaux[nom] = true end
+		end
 	end
+	if nb > 0 then self.membres = tous end -- tous les membres de la guilde (nil tant que la liste n'est pas arrivée)
 	local change = false
 	for nom in pairs(nouveaux) do
 		if not self.enLigne[nom] then change = true end

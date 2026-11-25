@@ -202,6 +202,7 @@ function Fenetre:InitialiserLigneCommande(ligne, commande)
 		qui, ns.Atelier.Age(commande.cree))
 	local progres = ns.Progres.libelle(commande, L.PROGRES_CRAFTES)
 	if progres then meta = meta .. " · |cff5fd068" .. progres .. "|r" end
+	if commande.pourboire then meta = meta .. " · " .. string.format(L.POURBOIRE_LIGNE, ns.Marche.Argent(commande.pourboire)) end
 	ligne.meta:SetText(meta)
 	ligne.mats:SetText(ns.Atelier.LibelleMats(commande))
 	local libelle, couleur = ns.Atelier.LibelleStatut(commande)
@@ -237,6 +238,9 @@ function Fenetre:InfobulleCommande(ligne)
 	GameTooltip:AddLine(" ")
 	GameTooltip:AddLine(string.format("%d × %s", o.qte, recette and recette.nom or "?"), 1, 1, 1)
 	GameTooltip:AddLine(string.format(L.POUR_CLIENT, o.client), 0.9, 0.8, 0.5)
+	if o.pourboire then
+		GameTooltip:AddLine(string.format(L.POURBOIRE_LIGNE, ns.Marche.Argent(o.pourboire)), 0.88, 0.7, 0.32)
+	end
 	if o.note and o.note ~= "" then GameTooltip:AddLine(string.format(L.CRAFTEUR_NOTE, o.note), 1, 1, 1, true) end
 	GameTooltip:AddLine(" ")
 	GameTooltip:AddLine(L.HISTORIQUE, 0.66, 0.61, 0.53)

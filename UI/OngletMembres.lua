@@ -87,8 +87,11 @@ function Fenetre:InitialiserLigneMembre(ligne, membre)
 		ligne.etat:SetJustifyH("RIGHT")
 		ligne.metiers = ligne:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		ligne.metiers:SetPoint("BOTTOMLEFT", 10, 6)
-		ligne.metiers:SetPoint("RIGHT", -10, 0)
+		ligne.metiers:SetPoint("RIGHT", -230, 0)
 		ligne.metiers:SetJustifyH("LEFT")
+		ligne.compteurs = ligne:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+		ligne.compteurs:SetPoint("BOTTOMRIGHT", -10, 6)
+		ligne.compteurs:SetJustifyH("RIGHT")
 	end
 
 	local r, g, b = couleurClasse(membre.classe)
@@ -113,6 +116,10 @@ function Fenetre:InitialiserLigneMembre(ligne, membre)
 	if membre.sansMetiers then morceaux[1] = "|cffa89c86" .. L.MEMBRES_SANS_METIERS .. "|r" end
 	if membre.obsolete then morceaux[#morceaux + 1] = "|cffff7070" .. L.VERSION_OBSOLETE_AIDE .. "|r" end
 	ligne.metiers:SetText(table.concat(morceaux, "   "))
+
+	-- Compteurs tirés de l'historique local (voir Core/Historique.lua) : propres à cette copie.
+	local c = self.compteursMembres and self.compteursMembres[membre.cle]
+	ligne.compteurs:SetText(c and string.format(L.MEMBRES_COMPTEURS, c.craftees, c.passees) or "")
 end
 
 function Fenetre:RafraichirMembres()
@@ -157,6 +164,7 @@ function Fenetre:RafraichirMembres()
 		return ordre[a] < ordre[b]
 	end)
 
+	self.compteursMembres = ns.Historique.compteurs(ns.db.global.historique)
 	vue.titre:SetText(string.format(L.MEMBRES_NOMBRE, #liste))
 	vue.vide:SetShown(#liste == 0)
 	vue.liste:SetDataProvider(CreateDataProvider(liste))

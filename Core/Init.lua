@@ -22,6 +22,9 @@ local defauts = {
 		observation = {}, -- relevé des événements d'échange, de courrier et de fabrication (/cpg observer)
 		stock = {},       -- stock de composants par personnage : [clé] = { maj, [itemID] = quantité }
 		prixObjets = {},  -- prix d'achat des objets fabricables, locaux (pas synchronisés) : [itemID] = { p, t, v }
+		annonces = {},    -- petites annonces de la guilde, synchronisées (Core/Annonces.lua) : [id] = annonce
+		historique = {},  -- commandes terminées ou annulées, locales (Core/Historique.lua) : liste d'entrées
+		favoris = {},     -- recettes favorites du compte, locales, jamais synchronisées : [spellID] = true
 		prix = {},        -- prix unitaires des composants à l'hôtel des ventes : [itemID] = { p, t }
 		versions = { pairs = {} }, -- pairs en retard de protocole : [clé] = { v, vu, brut, averti } ; plusRecente (Core/Versions.lua)
 		livraisonCumul = {}, -- remises en plusieurs fois : [idCommande] = { recu = { [itemID] = n }, donne = { [itemID] = n } }
@@ -37,6 +40,7 @@ local defauts = {
 		rappels = { actif = true, expiration = true, aConfirmer = 1, sansPreneur = 3, sansProgres = 5, enAttente = 3, ancienne = 30 },
 		avertir = { silencieux = true, connexion = false }, -- silencieux (par défaut) : ni fenêtre, ni texte central, ni son — il reste la ligne dans le chat, le bandeau, la minicarte et l'onglet Membres ; connexion : refaire l'avertissement quand un nouveau membre en retard se connecte (le chuchotement ne part jamais seul)
 		livraison = { suivi = true, confirmer = true, aide = true }, -- suivi des fabrications et des échanges ; confirmer : demande avant d'avancer une commande
+		ameliorations = { specs = {} }, -- spécialisation choisie pour le chercheur d'améliorations, par classe : [classe] = clé (Core/Poids.lua)
 		infobulles = { objet = true, cout = true, composant = true, personne = false, desenchantement = true,
 			aucunEnchanteur = true, commander = "ctrlmaj" },
 	},
@@ -136,6 +140,8 @@ function Compagnons:Commande(saisie)
 		self:GetModule("Rappels"):Commande(arg)
 	elseif action == "avertir" then
 		self:GetModule("Avertissement"):Commande(arg, arg2)
+	elseif action == "options" then
+		self:GetModule("Options"):Ouvrir()
 	elseif action == "debug" then
 		local p = self.db.profile
 		p.debug = not p.debug
@@ -152,6 +158,7 @@ function Compagnons:Commande(saisie)
 		print("  " .. L.AIDE_MINICARTE)
 		print("  " .. L.AIDE_SYNC)
 		print("  " .. L.AIDE_AVERTIR)
+		print("  " .. L.AIDE_OPTIONS)
 		print("  " .. L.AIDE_RAPPELS)
 		print("  " .. L.AIDE_INFOBULLES)
 		print("  " .. L.AIDE_OBSERVER)
