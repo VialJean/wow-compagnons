@@ -148,13 +148,14 @@ pourboire). L'addon ne verse jamais rien : c'est une mention affichée, que le c
 
 ### Petites annonces (protocole 4)
 
-Une annonce est une intention permanente : une **offre** (« je fabrique ça », toujours sur une recette) ou une **demande** (« je
-cherche ça », sur une recette ou un simple composant).
+Une annonce est une intention permanente : une **offre** (« je fabrique ça », sur une recette) ou une **demande** (« je cherche
+ça », sur une recette ou un simple composant). Une annonce peut aussi être de **texte seul** (ni `spell` ni `item`) : la `note`
+est alors obligatoire et fait toute l'annonce.
 
 ```lua
 { id = "Prénom Nom#1731180062#1", auteur = "Prénom Nom", genre = "offre",  -- offre | demande
   spell = 2329,          -- recette visée, ou
-  item = nil,            -- objet visé (demande seulement) : l'un ou l'autre, jamais les deux
+  item = nil,            -- objet visé (demande seulement) : l'un ou l'autre, jamais les deux ; aucun des deux = texte seul
   mats = "partie",       -- tout | partie | crafteur : qui fournit les composants
   note = "",             -- 100 caractères au plus, en clair
   rev = 0, maj = 1731180062,   -- révision (une par modification) et dernière reconduction

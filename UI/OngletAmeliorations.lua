@@ -55,6 +55,21 @@ function Fenetre:CreerAmeliorations(f)
 			option(L.AMELIORATIONS_GUILDE, "guilde")
 			option(L.AMELIORATIONS_EN_LIGNE, "enLigne")
 			option(L.AMELIORATIONS_VIDES, "vides")
+			-- Spécialisation : les stats sont pondérées selon l'arbre de talents (Core/Ameliorations.lua).
+			local arbres = ns.AmeliorationsModule:Specialisations()
+			if #arbres > 0 then
+				racine:CreateDivider()
+				racine:CreateTitle(L.AMELIORATIONS_SPEC)
+				racine:CreateRadio(L.AMELIORATIONS_SPEC_AUTO,
+					function() return self.ameliorations.spec == nil end,
+					function() self.ameliorations.spec = nil; self:RafraichirAmeliorations() end)
+				for _, arbre in ipairs(arbres) do
+					local index = arbre.index
+					racine:CreateRadio(arbre.nom,
+						function() return self.ameliorations.spec == index end,
+						function() self.ameliorations.spec = index; self:RafraichirAmeliorations() end)
+				end
+			end
 		end)
 	end
 
@@ -124,6 +139,7 @@ function Fenetre:InitialiserLigneAmelioration(ligne, e)
 			-- Ce que l'on porte aujourd'hui, et ce que le calcul ne voit pas.
 			GameTooltip:AddLine(" ")
 			GameTooltip:AddLine(string.format(L.AMELIORATIONS_PORTE, c.porteIlvl), 0.66, 0.61, 0.53)
+			if c.utilite then GameTooltip:AddLine(L.AMELIORATIONS_STATS_NOTE, 0.66, 0.61, 0.53, true) end
 			GameTooltip:AddLine(L.AMELIORATIONS_EFFETS, 0.66, 0.61, 0.53, true)
 			if not c.verifie then GameTooltip:AddLine(L.AMELIORATIONS_NON_VERIFIE, 0.91, 0.66, 0.31, true) end
 			GameTooltip:Show()
@@ -154,7 +170,9 @@ function Fenetre:InitialiserLigneAmelioration(ligne, e)
 	ligne.titre:SetText(recette and recette.nom or "?")
 	ligne.titre:SetTextColor(couleurQualite(recette and recette.qualite))
 	local porte = c.porteItem and (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(c.porteItem)) or nil
-	ligne.detail:SetText(string.format("|cff5fd068+%d|r · %s %d · %s", c.gain, L.AMELIORATIONS_ILVL, c.ilvl,
+	local ajuste = c.utilite and string.format(" · " .. L.AMELIORATIONS_UTILITE, math.floor(c.utilite * 100 + 0.5)) or ""
+	local couleur = c.gain > 0 and "5fd068" or "e8a850" -- niveau d'objet plus bas : meilleur par ses stats
+	ligne.detail:SetText(string.format("|cff%s%+d|r · %s %d%s · %s", couleur, c.gain, L.AMELIORATIONS_ILVL, c.ilvl, ajuste,
 		string.format(L.AMELIORATIONS_REMPLACE, porte or L.AMELIORATIONS_VIDE)))
 
 	-- Le crafteur à suggérer : en ligne, peu chargé, bon niveau (même règle que le dialogue de commande).

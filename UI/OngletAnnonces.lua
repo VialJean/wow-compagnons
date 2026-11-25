@@ -8,6 +8,7 @@ local Fenetre = ns.Fenetre
 
 local HAUTEUR_LIGNE = 44
 local ICONE_INCONNUE = 134400
+local ICONE_TEXTE = "Interface\\Icons\\INV_Misc_Note_01"
 
 local function couleurQualite(q)
 	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q or 1]
@@ -21,8 +22,12 @@ local function couleurClasse(classe)
 	return 0.8, 0.8, 0.8
 end
 
---- Nom, icône et qualité de la cible d'une annonce (recette ou objet).
+--- Nom, icône et qualité de la cible d'une annonce (recette ou objet). Une annonce de texte seul n'a pas de cible : son message
+-- sert de titre.
 local function cible(a)
+	if not a.spell and not a.item then
+		return a.note, ICONE_TEXTE, 1
+	end
 	if a.spell then
 		local r = ns.Recettes.recettes[a.spell]
 		local icone = r and r.objet and r.objet > 0 and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(r.objet)
@@ -70,6 +75,21 @@ function Fenetre:CreerAnnonces(f)
 		end
 	end)
 	vue.publier:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+
+	-- Texte libre : une annonce sans recette ni objet liés, un message seul.
+	vue.texte = CreateFrame("Button", nil, vue, "UIPanelButtonTemplate")
+	vue.texte:SetSize(120, 24)
+	vue.texte:SetPoint("LEFT", vue.publier, "RIGHT", 6, 0)
+	vue.texte:SetText(L.ANNONCES_TEXTE_BOUTON)
+	vue.texte:SetScript("OnClick", function() self:PublierTexteLibre() end)
+	vue.texte:SetScript("OnEnter", function(b)
+		if GameTooltip then
+			GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
+			GameTooltip:SetText(L.ANNONCES_TEXTE_AIDE, 1, 1, 1, 1, true)
+			GameTooltip:Show()
+		end
+	end)
+	vue.texte:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
 	local menu = CreateFrame("DropdownButton", nil, vue, "WowStyle1DropdownTemplate")
 	menu:SetSize(200, 24)
@@ -162,10 +182,13 @@ function Fenetre:InitialiserLigneAnnonce(ligne, a)
 	local mats = a.mats == "tout" and L.ANNONCE_MATS_TOUT or a.mats == "crafteur" and L.ANNONCE_MATS_CRAFTEUR or L.ANNONCE_MATS_PARTIE
 	ligne.auteur:SetText(string.format("|cff%02x%02x%02x%s|r |cffa89c86· %s · %s|r", r * 255, g * 255, b * 255, a.auteur,
 		enLigne and L.EN_LIGNE or L.HORS_LIGNE, mats))
-	ligne.note:SetText(a.note ~= "" and ('"' .. a.note .. '"') or "")
+	local seul = not a.spell and not a.item
+	ligne.note:SetText((a.note ~= "" and not seul) and ('"' .. a.note .. '"') or "")
 
 	if ns.AnnoncesModule:EstMienne(a) then
 		ligne.action:SetText(L.ANNONCE_RETIRER)
+	elseif seul then
+		ligne.action:SetText(L.ANNONCE_CONTACTER)
 	elseif a.genre == "offre" then
 		ligne.action:SetText(L.COMMANDER)
 	else
@@ -178,6 +201,10 @@ function Fenetre:AgirSurAnnonce(a)
 	if ns.AnnoncesModule:EstMienne(a) then
 		ns.AnnoncesModule:Retirer(a)
 		self:RafraichirAnnonces(true)
+	elseif not a.spell and not a.item then
+		-- Texte seul : un chuchotement vide, le joueur écrit lui-même.
+		local texte = string.format("/w %s ", a.auteur)
+		if ChatFrame_OpenChat then ChatFrame_OpenChat(texte) else ns.addon:Print(texte) end
 	elseif a.genre == "offre" then
 		-- Dialogue de commande prérempli : crafteur = l'auteur, conditions de l'annonce.
 		ns.Dialogue:Ouvrir(a.spell, { crafteur = a.auteur, mats = a.mats })
@@ -207,6 +234,48 @@ function Fenetre:PublierAnnonce()
 		return
 	end
 	self:RafraichirAnnonces(true)
+end
+
+--- Publie une annonce de texte seul (offre ou demande selon l'onglet) : une fenêtre demande le message.
+function Fenetre:PublierTexteLibre()
+	if not StaticPopupDialogs["COMPAGNONS_ANNONCE_TEXTE"] then
+		StaticPopupDialogs["COMPAGNONS_ANNONCE_TEXTE"] = {
+			text = "%s",
+			button1 = ACCEPT,
+			button2 = CANCEL,
+			hasEditBox = true,
+			maxLetters = 100,
+			OnAccept = function(dialogue, genre)
+				local champ = dialogue.EditBox or dialogue.editBox
+				local note = champ and champ:GetText() or ""
+				if not note:find("%S") then
+					ns.addon:Print(L.ANNONCES_TEXTE_VIDE)
+					return
+				end
+				local a, erreur = ns.AnnoncesModule:Publier({ genre = genre, mats = "partie", note = note })
+				if not a then
+					ns.addon:Print(erreur or L.ACTION_IMPOSSIBLE)
+					return
+				end
+				if Fenetre.RafraichirAnnonces then Fenetre:RafraichirAnnonces(true) end
+			end,
+			EditBoxOnEnterPressed = function(champ)
+				local dialogue = champ:GetParent()
+				if dialogue.GetButton then
+					local b = dialogue:GetButton(1)
+					if b then b:Click() return end
+				end
+				if dialogue.button1 then dialogue.button1:Click() end
+			end,
+			timeout = 0,
+			whileDead = true,
+			hideOnEscape = true,
+			preferredIndex = 3,
+		}
+	end
+	local genre = self.annoncesGenre
+	StaticPopup_Show("COMPAGNONS_ANNONCE_TEXTE", genre == "offre" and L.ANNONCES_TEXTE_TITRE_OFFRE or L.ANNONCES_TEXTE_TITRE_DEMANDE,
+		nil, genre)
 end
 
 function Fenetre:RafraichirAnnonces(garder)

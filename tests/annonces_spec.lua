@@ -23,8 +23,34 @@ describe("Annonces", function()
 	it("refuse une offre sur un simple objet, ou une cible absente ou double", function()
 		assert.is_nil(Annonces.nouvelle({ auteur = "A B", genre = "offre", item = 2449, maintenant = T0 }))
 		assert.is_nil(Annonces.nouvelle({ auteur = "A B", genre = "demande", maintenant = T0 }))
+		assert.is_nil(Annonces.nouvelle({ auteur = "A B", genre = "demande", note = "   ", maintenant = T0 }))
 		assert.is_nil(Annonces.nouvelle({ auteur = "A B", genre = "demande", spell = 2329, item = 2449, maintenant = T0 }))
 		assert.is_nil(Annonces.nouvelle({ auteur = "A B", genre = "troc", spell = 2329, maintenant = T0 }))
+	end)
+
+	it("accepte une annonce de texte seul, offre ou demande, à condition d'avoir une note", function()
+		for _, genre in ipairs({ "offre", "demande" }) do
+			local a = assert(Annonces.nouvelle({ auteur = "A B", genre = genre, note = "Je cherche une guilde de métiers", maintenant = T0 }))
+			assert.is_nil(a.spell)
+			assert.is_nil(a.item)
+			local v = assert(Annonces.valider(a, donnees))
+			assert.equal(a.hash, v.hash)
+		end
+		local a = Annonces.nouvelle({ auteur = "A B", genre = "offre", note = "Fiole", maintenant = T0 })
+		assert.is_nil(Annonces.appliquer(a, "modifier", "A B", T0 + 1, { note = "  " }))
+		assert.equal("Autre", assert(Annonces.appliquer(a, "modifier", "A B", T0 + 1, { note = "Autre" })).note)
+		-- sans note, une annonce reçue est refusée
+		local sans = {}
+		for k, v in pairs(a) do sans[k] = v end
+		sans.note = ""
+		assert.is_nil(Annonces.valider(sans, donnees))
+	end)
+
+	it("une annonce de texte seul n'a pas de métier : le filtre par métier l'écarte", function()
+		local t = Annonces.nouvelle({ auteur = "A B", genre = "offre", note = "Texte", maintenant = T0 })
+		local liste = Annonces.liste({ [t.id] = t }, { genre = "offre", metier = 164, donnees = donnees }, T0)
+		assert.equal(0, #liste)
+		assert.equal(1, #Annonces.liste({ [t.id] = t }, { genre = "offre", donnees = donnees }, T0))
 	end)
 
 	it("tronque la note à 100 caractères", function()

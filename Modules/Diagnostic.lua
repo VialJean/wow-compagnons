@@ -151,6 +151,7 @@ function Diagnostic:Lancer()
 	-- Chercheur d'améliorations : sans effet en 0.6, mais dit si le niveau 2 (stats de l'objet porté, suffixes compris) pourra
 	-- s'appuyer sur l'API ou devra lire les infobulles.
 	api("C_Item.GetItemStats", C_Item and C_Item.GetItemStats ~= nil)
+	api("GetNumTalentTabs / GetTalentTabInfo (spécialisation)", _G.GetNumTalentTabs ~= nil and _G.GetTalentTabInfo ~= nil)
 	api("C_Item.GetDetailedItemLevelInfo", C_Item and C_Item.GetDetailedItemLevelInfo ~= nil)
 	api("GetInventoryItemLink", _G.GetInventoryItemLink ~= nil)
 	api("C_Item.GetItemCount", C_Item and C_Item.GetItemCount ~= nil)

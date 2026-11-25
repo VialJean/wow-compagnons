@@ -5,8 +5,9 @@
 --     id = "Prénom Nom#1731180062#1",     -- unique : auteur, horodatage, compteur
 --     auteur = "Prénom Nom",
 --     genre = "offre" | "demande",
---     spell = nil | 2329,                 -- recette visée (une offre vise toujours une recette)
+--     spell = nil | 2329,                 -- recette visée
 --     item = nil | 2449,                  -- objet visé : une demande peut viser un simple composant (spell ou item, pas les deux)
+--                                         -- ni spell ni item : annonce de texte seul, la note est alors obligatoire
 --     mats = "tout" | "partie" | "crafteur",   -- conditions : qui fournit les composants (comme une commande)
 --     note = "",                          -- 100 caractères au plus
 --     rev = 0, maj = 1731180062,          -- révision (une par modification) et dernière reconduction
@@ -35,6 +36,11 @@ local function texte(v, max)
 	return v:sub(1, max)
 end
 
+-- Vrai si le texte contient autre chose que des espaces (une annonce sans cible vit de sa note).
+local function renseigne(v)
+	return type(v) == "string" and v:find("%S") ~= nil
+end
+
 function Annonces.hash(a)
 	local morceaux = {
 		a.id, a.auteur, a.genre, tostring(a.spell or ""), tostring(a.item or ""), a.mats, a.note or "",
@@ -47,8 +53,9 @@ end
 -- inutilisable.
 function Annonces.nouvelle(o)
 	if not GENRES[o.genre] then return nil, "genre" end
-	if (o.spell == nil) == (o.item == nil) then return nil, "cible" end -- une recette ou un objet, pas les deux ni aucun
-	if o.genre == "offre" and not o.spell then return nil, "cible" end
+	if o.spell ~= nil and o.item ~= nil then return nil, "cible" end -- une recette ou un objet, pas les deux
+	if o.spell == nil and o.item == nil and not renseigne(o.note) then return nil, "note" end -- texte seul : note obligatoire
+	if o.genre == "offre" and o.item ~= nil then return nil, "cible" end
 	compteur = compteur + 1
 	local a = {
 		id = string.format("%s#%d#%d", o.auteur, math.floor(o.maintenant), compteur),
@@ -67,12 +74,14 @@ function Annonces.valider(brut, donnees)
 	local id, auteur = texte(brut.id, MAX_ID), texte(brut.auteur, 64)
 	if not id or id == "" or not auteur or auteur == "" then return nil end
 	if not GENRES[brut.genre] or not MATS[brut.mats] then return nil end
-	if (brut.spell == nil) == (brut.item == nil) then return nil end
+	if brut.spell ~= nil and brut.item ~= nil then return nil end
 	if brut.spell ~= nil then
 		if type(brut.spell) ~= "number" or not donnees.recettes[brut.spell] then return nil end
-	else
+	elseif brut.item ~= nil then
 		if brut.genre == "offre" then return nil end
 		if type(brut.item) ~= "number" or not (donnees.objets and donnees.objets[brut.item]) then return nil end
+	elseif not renseigne(brut.note) then
+		return nil -- ni recette ni objet : la note est la seule chose à dire
 	end
 	for _, champ in ipairs({ "rev", "maj" }) do
 		local v = brut[champ]
@@ -116,7 +125,11 @@ function Annonces.appliquer(a, action, par, maintenant, extra)
 	n.maj = math.max(maintenant, a.maj)
 	if action == "modifier" then
 		extra = extra or {}
-		if extra.note ~= nil then n.note = texte(extra.note, MAX_NOTE) or "" end
+		if extra.note ~= nil then
+			local note = texte(extra.note, MAX_NOTE) or ""
+			if not a.spell and not a.item and not renseigne(note) then return nil, "note" end
+			n.note = note
+		end
 		if MATS[extra.mats] then n.mats = extra.mats end
 	elseif action == "retirer" then
 		n.retire = true
@@ -144,7 +157,7 @@ function Annonces.liste(annonces, options, maintenant)
 		if not a.retire and not Annonces.perimee(a, maintenant) and a.genre == options.genre then
 			local garde = true
 			if options.metier then
-				local r = a.spell and options.donnees and options.donnees.recettes[a.spell]
+				local r = a.spell and options.donnees and options.donnees.recettes[a.spell] -- le texte seul n'a pas de métier
 				garde = r ~= nil and r.metier == options.metier
 			end
 			if garde then liste[#liste + 1] = a end

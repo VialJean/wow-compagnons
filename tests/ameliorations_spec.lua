@@ -176,6 +176,86 @@ describe("Ameliorations.chercher", function()
 	end)
 end)
 
+describe("Ameliorations : stats et spécialisation", function()
+	it("le poids d'une stat dépend de la classe et de l'arbre de talents", function()
+		local tank, degats = A.poids("WARRIOR", 3), A.poids("WARRIOR", 1)
+		assert.is_true(tank[12] > (degats[12] or 0))           -- défense
+		assert.is_true(degats[38] > (tank[38] or 0))           -- puissance d'attaque
+		assert.is_true(A.poids("PRIEST", 3)[42] > 0)    -- dégâts des sorts pour l'ombre
+		assert.equal(0, A.poids("PRIEST", 2)[42] or 0)  -- pas pour le soin
+		-- spécialisation inconnue : la liste des stats utiles de la classe, à égalité
+		assert.equal(1, A.poids("WARRIOR", nil)[4])
+		assert.is_nil(A.poids("INCONNUE", 1))
+	end)
+
+	it("l'utilité est la part du budget qui tombe dans les stats recherchées, rapport seul", function()
+		local p = { [4] = 1, [7] = 0.5 }
+		assert.is_near(1, A.utilite(p, { { 4, 100 } }), 1e-9)
+		assert.is_near(0.75, A.utilite(p, { { 4, 5000 }, { 7, 5000 } }), 1e-9)
+		assert.is_near(A.utilite(p, { { 4, 1 }, { 7, 1 } }), A.utilite(p, { { 4, 9000 }, { 7, 9000 } }), 1e-9)
+		-- armure supplémentaire, résistances et types inconnus ne comptent pas
+		assert.is_near(1, A.utilite(p, { { 4, 100 }, { 50, 900000 }, { 51, 7000 }, { 85, 5000 } }), 1e-9)
+		assert.is_nil(A.utilite(p, { { 50, 100 } }))
+		assert.is_nil(A.utilite(p, {}))
+	end)
+
+	it("convertit les stats du jeu en types", function()
+		local l = A.statsDuJeu({ ITEM_MOD_STAMINA_SHORT = 12, ITEM_MOD_STRENGTH_SHORT = 7, ITEM_MOD_INCONNU_SHORT = 3 })
+		assert.same({ { 4, 7 }, { 7, 12 } }, l)
+		assert.is_nil(A.statsDuJeu({}))
+		assert.is_nil(A.statsDuJeu(nil))
+	end)
+
+	it("une grosse armure supplémentaire ne rend pas un objet inutile à la classe", function()
+		assert.is_true(A.pertinent("WARRIOR", { { 7, 2800 }, { 50, 40000 }, { 51, 7200 } }))
+	end)
+
+	local function etoffes(role)
+		-- deux plastrons de même niveau : un à intelligence et puissance des sorts, un à force
+		local d = { recettes = {
+			[1] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 45, 10000 } }),
+			[2] = recette(5, 30, 20, 4, 1, { { 4, 10000 }, { 7, 5000 } }),
+		} }
+		return A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = role }))
+	end
+
+	it("classe d'abord ce qui sert la spécialisation du joueur", function()
+		-- prêtre : l'étoffe force/endurance est écartée par la classe, seul le premier reste
+		assert.same({ 1 }, candidats(etoffes(2), 5))
+	end)
+
+	it("à niveau égal, la spécialisation départage les candidats", function()
+		local d = { recettes = {
+			[1] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 41, 10000 } }),   -- soins
+			[2] = recette(5, 30, 20, 4, 1, { { 5, 10000 }, { 42, 8000 } }),    -- dégâts
+		} }
+		local soin = candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2 })), 5)
+		local ombre = candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 3 })), 5)
+		assert.same({ 1, 2 }, soin)
+		assert.same({ 2, 1 }, ombre)
+	end)
+
+	it("un objet de niveau plus haut mais aux stats inutiles ne bat plus un objet porté bien adapté", function()
+		local d = { recettes = {
+			[1] = recette(5, 34, 20, 4, 1, { { 5, 10000 }, { 41, 10000 } }),  -- niveau 34, soins
+		} }
+		local equip = { [5] = { itemID = 9, ilvl = 30, stats = { { 5, 20 }, { 42, 25 } } } } -- niveau 30, dégâts
+		-- ombre : porté très adapté (30 × 0,96 environ), candidat de soins mal adapté : pas proposé
+		assert.same({}, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 3, equipement = equip })), 5))
+		-- soin : le candidat est adapté, le porté ne l'est pas : proposé, même avec un niveau voisin
+		assert.same({ 1 }, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5))
+	end)
+
+	it("sans stats connues sur l'objet porté, le niveau d'objet décide", function()
+		local d = { recettes = { [1] = recette(5, 31, 20, 4, 1, { { 5, 10000 }, { 41, 1000 }, { 42, 9000 } }) } }
+		local equip = { [5] = { itemID = 9, ilvl = 30 } }
+		assert.same({ 1 }, candidats(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5))
+		local c = groupe(A.chercher(ctx({ donnees = d, classe = "PRIEST", spec = 2, equipement = equip })), 5).candidats[1]
+		assert.is_number(c.utilite)
+		assert.equal(1, c.gain)
+	end)
+end)
+
 describe("Ameliorations.donneesPresentes", function()
 	it("détecte une base sans équipement (générée avant la 0.6)", function()
 		assert.is_true(A.donneesPresentes(donnees))
